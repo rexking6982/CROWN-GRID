@@ -4,7 +4,7 @@ import { analyzeEpisodeContent } from '@/lib/gemini';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { seriesTitle, episodeNum, episodeTitle, content } = body;
+    const { seriesTitle, episodeNum, episodeTitle, content, preferredModel } = body;
 
     if (!content) {
       return NextResponse.json(
@@ -17,7 +17,8 @@ export async function POST(req: Request) {
       seriesTitle || '성황 유니버스',
       episodeNum || 1,
       episodeTitle || '무제',
-      content
+      content,
+      preferredModel
     );
 
     return NextResponse.json({
