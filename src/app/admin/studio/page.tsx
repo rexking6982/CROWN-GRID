@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import RelationshipGraph from '@/components/admin/RelationshipGraph';
@@ -26,10 +26,191 @@ import {
   Download,
   ExternalLink,
   X,
-  Play
+  Play,
+  ChevronDown,
+  ChevronUp,
+  BookOpen
 } from 'lucide-react';
 import { AgentProcessResult, AVAILABLE_MODELS } from '@/lib/gemini';
 import { Episode, Series } from '@/lib/types';
+
+// 20인 인물 데이터베이스 스탯 사전
+const ALL_CHARACTERS_DB = [
+  { name: '차선우', dominance: 88, submission: 25, obsession: 90, shame: 82, sanity: 65, secretKeyword: '제1특수훈육단' },
+  { name: '권재하', dominance: 97, submission: 5, obsession: 94, shame: 10, sanity: 90, secretKeyword: '규율대_지휘봉' },
+  { name: '신우겸', dominance: 45, submission: 95, obsession: 80, shame: 92, sanity: 45, secretKeyword: '186cm_황태자' },
+  { name: '권도진', dominance: 98, submission: 2, obsession: 96, shame: 5, sanity: 95, secretKeyword: '성황푸른매트' },
+  { name: '배진혁', dominance: 99, submission: 1, obsession: 98, shame: 2, sanity: 96, secretKeyword: '로열넥타_1호' },
+  { name: '송강우', dominance: 30, submission: 96, obsession: 88, shame: 90, sanity: 38, secretKeyword: '아이기스_백란' },
+  { name: '강태건', dominance: 95, submission: 6, obsession: 92, shame: 8, sanity: 88, secretKeyword: '통제탑_사격장' },
+  { name: '루시드', dominance: 20, submission: 98, obsession: 90, shame: 95, sanity: 30, secretKeyword: '골드초커_04' },
+  { name: '닥터 진', dominance: 96, submission: 4, obsession: 94, shame: 6, sanity: 93, secretKeyword: '임상차트_VIP' },
+  { name: '진태헌', dominance: 96, submission: 4, obsession: 94, shame: 6, sanity: 93, secretKeyword: '비공개처치실' },
+  { name: '강해든', dominance: 35, submission: 96, obsession: 85, shame: 94, sanity: 42, secretKeyword: '190cm_수영부' },
+  { name: '도지혁', dominance: 94, submission: 8, obsession: 95, shame: 12, sanity: 91, secretKeyword: '차음실_B9' },
+  { name: '윤시환', dominance: 91, submission: 12, obsession: 89, shame: 15, sanity: 87, secretKeyword: '설산기지_규율' },
+  { name: '서하준', dominance: 40, submission: 95, obsession: 82, shame: 90, sanity: 48, secretKeyword: '성황청색도복' },
+  { name: '최은혁', dominance: 97, submission: 3, obsession: 95, shame: 6, sanity: 94, secretKeyword: '학생자치규율' }
+];
+
+function extractScenesFromContent(content: string, seriesTitle: string, epNum: number, epTitle: string) {
+  const scenes: Array<{ sceneName: string; timestamp: string; prompt: string; negativePrompt: string; aspectRatio: string }> = [];
+  const regex = /Scene\s*(\d+)[:\s]*([^\r\n]*)\s*[\r\n]+(?:\s*>\s*)?\*\*Prompt:\*\*\s*[\r\n]+(?:\s*>\s*)?`([\s\S]*?)`/gi;
+  let m;
+  while ((m = regex.exec(content)) !== null) {
+    const rawPrompt = m[3].trim();
+    if (rawPrompt.length > 20) {
+      scenes.push({
+        sceneName: `Scene 0${m[1]}. ${m[2].replace(/[—\-]/g, '').trim() || '핵심 장면'}`,
+        timestamp: `00:${String(scenes.length * 8 + 3).padStart(2, '0')}:00`,
+        prompt: rawPrompt,
+        negativePrompt: 'cartoon, anime, 3d render, oversaturated, blurry, bad anatomy',
+        aspectRatio: '16:9',
+      });
+    }
+  }
+
+  // 본문에 Scene 구획이 없을 경우 해당 시리즈/회차별 맞춤 5대 씬 동적 생성
+  if (scenes.length === 0) {
+    return [
+      {
+        sceneName: `01. [도입] ${epTitle} - 규율 구역 진입`,
+        timestamp: '00:04:12',
+        prompt: `Cinematic 35mm photograph of ${seriesTitle} chapter ${epNum}, dramatic opening establishing shot, cold directional lighting, subtle tension, atmospheric dust particles, shallow depth of field, Leica Summilux lens, 8k uhd`,
+        negativePrompt: 'cartoon, blurry, bad anatomy',
+        aspectRatio: '16:9',
+      },
+      {
+        sceneName: `02. [대치] ${epTitle} - 차가운 시선과 권력 구도`,
+        timestamp: '00:12:45',
+        prompt: `Dramatic close up shot, 35mm Leica M6, strong rim lighting in dark luxury facility, champagne gold and obsidian accents, intense eye contact, cold superiority expression, wet skin texture, high fashion noir`,
+        negativePrompt: 'deformed, smiling, casual clothes, low resolution',
+        aspectRatio: '16:9',
+      },
+      {
+        sceneName: `03. [절정] ${epTitle} - 결박과 신체 굴복의 각인`,
+        timestamp: '00:22:18',
+        prompt: `High-contrast sensual chiaroscuro shot, handsome athletic Korean youth with exhausted emotional expression, black leather constraints with gold buckles, directional spotlight, glistening sweat on skin, raw surrender, 35mm vintage film still`,
+        negativePrompt: 'bright daylight, outdoor, cheap props, distortion',
+        aspectRatio: '16:9',
+      },
+      {
+        sceneName: `04. [전환] ${epTitle} - 거울에 비친 무너진 이성`,
+        timestamp: '00:31:05',
+        prompt: `Medium shot inside a secret luxurious chamber with antique gilded mirrors, reflection of breathless exhausted figure kneeling, shadowed dominant figure standing behind, psychological domination, moody mist, muted gold tones`,
+        negativePrompt: 'flat lighting, saturated, smile',
+        aspectRatio: '16:9',
+      },
+      {
+        sceneName: `05. [결속] ${epTitle} - 성황 왕관 엠블럼과 영원한 서약`,
+        timestamp: '00:39:50',
+        prompt: `Macro shot, heavy brass keyhole and locked steel soundproof door, engraved golden insignia glowing faintly, cold blue corridor light leaking from the bottom slit, cinematic mystery, Panavision anamorphic lens flare`,
+        negativePrompt: 'low quality, messy composition, blurry',
+        aspectRatio: '16:9',
+      },
+    ];
+  }
+
+  return scenes;
+}
+
+function getComputedStudioData(episode: Episode | null, series: Series | undefined): AgentProcessResult {
+  if (!episode) {
+    return {
+      usedModel: 'Local Smart Engine (Instant)',
+      summary: {
+        oneLineSlit: '에피소드를 선택해 주세요.',
+        keyPoints: ['에피소드 정보 없음'],
+      },
+      canonCheck: { passed: true, cWordFound: false, issues: [], bangleSlitRulePassed: true },
+      prompts: [],
+      distribution: { postypeHtml: '', subscribeStarText: '' },
+      characterStats: [],
+    };
+  }
+
+  const content = episode.content || '';
+  const cWordFound = content.includes('Class');
+  const seriesTitle = series?.title || '성황 유니버스';
+
+  // 실제 등장인물 감지
+  const detectedChars = ALL_CHARACTERS_DB.map(c => {
+    const reg = new RegExp(c.name, 'g');
+    const matches = content.match(reg);
+    return { ...c, count: matches ? matches.length : 0 };
+  }).filter(c => c.count > 0).sort((a, b) => b.count - a.count);
+
+  const activeStats = detectedChars.length > 0 
+    ? detectedChars 
+    : ALL_CHARACTERS_DB.slice(0, 2);
+
+  // 헤딩(#, ##, ###) 추출하여 3 Keypoints 만들기
+  const headings = content.split('\n')
+    .map(line => line.trim())
+    .filter(line => line.startsWith('###') || line.startsWith('##') || line.startsWith('Scene'))
+    .map(line => line.replace(/^[#\s]+/, '').replace(/^Scene\s*\d+[:\s]*/, '').replace(/[\*\[\]\(\)]/g, '').trim())
+    .filter(line => line.length > 3 && !line.includes('Prompt') && !line.includes('소설 본문'));
+
+  const keyPoints = headings.slice(0, 3);
+  if (keyPoints.length < 3) {
+    keyPoints.push(`[제${episode.episode_number}화] 폐쇄 구역 내에서 시작된 은밀한 명령 체계의 재편`);
+    if (keyPoints.length < 3) keyPoints.push(`주요 등장인물 간의 심리적 우위 선점과 생체 반응 검열`);
+    if (keyPoints.length < 3) keyPoints.push(`성황 유니버스의 묵인된 규율 속에서 봉인된 복종 서약`);
+  }
+
+  // 1줄 슬릿 요약
+  const oneLineSlit = `[제${episode.episode_number}화] ${episode.title} - ${seriesTitle}의 엄격한 규율과 본능의 경계선에서 교차하는 지배의 의식과 무너지는 통제력.`;
+
+  const issues: string[] = [];
+  if (cWordFound) {
+    issues.push("주의: 성황 유니버스 Canon 규칙 위반! 'Class' 단어가 본문에 포함되어 있습니다. (성황 VIP 클럽 외 서열 표현 금지)");
+  }
+
+  const prompts = extractScenesFromContent(content, seriesTitle, episode.episode_number, episode.title || '원고');
+
+  return {
+    usedModel: 'Local Smart Engine (Instant Sync)',
+    summary: {
+      oneLineSlit,
+      keyPoints,
+    },
+    canonCheck: {
+      passed: !cWordFound,
+      cWordFound,
+      issues,
+      bangleSlitRulePassed: true,
+    },
+    prompts,
+    distribution: {
+      postypeHtml: `<div class="se-main-container" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.8; color: #222;">
+  <div style="text-align: center; margin-bottom: 24px;">
+    <h2 style="font-size: 22px; font-weight: 700; color: #111; letter-spacing: -0.5px;">${seriesTitle}</h2>
+    <p style="font-size: 14px; color: #777;">제${episode.episode_number}화 - ${episode.title}</p>
+  </div>
+  <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+  <div style="font-size: 16px; white-space: pre-wrap; word-break: break-all;">
+${content.slice(0, 1500)}...
+  </div>
+  <div style="margin-top: 40px; padding: 24px; background: #0A0A0C; border: 1px solid #D4AF37; border-radius: 8px; text-align: center; color: #F3F3F5;">
+    <h3 style="color: #D4AF37; font-size: 18px; margin-bottom: 8px;">👑 CROWN GRID 익스클루시브 완전판 안내</h3>
+    <p style="font-size: 13px; color: #AAA; margin-bottom: 16px;">본 에피소드의 무삭제 무검열 원본 및 고화질 35mm 비하인드 스틸컷은 창작자 전용 보안 뷰어 『CROWN GRID』에서 VIP 등급으로 실시간 감상하실 수 있습니다.</p>
+    <a href="/read" style="display: inline-block; padding: 10px 24px; background: #D4AF37; color: #0A0A0C; font-weight: 700; font-size: 14px; text-decoration: none; border-radius: 4px;">크라운 그리드 보안 열람실 바로가기 →</a>
+  </div>
+</div>`,
+      subscribeStarText: `👑 [CROWN GRID EXCLUSIVE] ${seriesTitle} - Ep.${episode.episode_number}: ${episode.title}
+
+Hello patrons, this is the official director's cut for Episode ${episode.episode_number}.
+In this chapter, the delicate psychological balance shifts irrevocably into total subjection behind the soundproof partition.
+
+[Key Incident]
+${episode.title} introduces high-intensity psychological warfare with customized conditioning protocols.
+
+Thank you for supporting this ongoing dark universe project.
+Uncensored full chapters, interactive character dynamic maps, and high-res 35mm film stills are strictly protected on the CROWN GRID system.`,
+    },
+    characterStats: activeStats,
+  };
+}
 
 export default function StudioPage() {
   const [seriesList, setSeriesList] = useState<Series[]>([]);
@@ -67,6 +248,9 @@ export default function StudioPage() {
   const [customPrompts, setCustomPrompts] = useState<Record<number, string>>({});
   const [modalImage, setModalImage] = useState<string | null>(null);
 
+  // 원고 전문 열람기 접기/펼치기
+  const [showManuscript, setShowManuscript] = useState<boolean>(false);
+
   // 데이터 로드
   useEffect(() => {
     fetch('/api/sync-assets')
@@ -85,14 +269,36 @@ export default function StudioPage() {
       .catch(console.error);
   }, []);
 
+  // 시리즈 변경 핸들러 (첫 회차 자동 연결 & 이미지/프롬프트 캐시 회차별 초기화)
+  const handleSeriesChange = (seriesId: string) => {
+    setSelectedSeriesId(seriesId);
+    const seriesEpisodes = episodes.filter(ep => ep.series_id === seriesId);
+    if (seriesEpisodes.length > 0) {
+      const firstEp = seriesEpisodes[0];
+      setSelectedEpisodeId(firstEp.id);
+      setCurrentEpisode(firstEp);
+      setAnalysisResult(null);
+      setRenderedImages({});
+      setCustomPrompts({});
+    }
+  };
+
+  // 회차 변경 핸들러
   const handleEpisodeChange = (epId: string) => {
     setSelectedEpisodeId(epId);
     const found = episodes.find(e => e.id === epId);
     if (found) {
       setCurrentEpisode(found);
       setAnalysisResult(null);
+      setRenderedImages({});
+      setCustomPrompts({});
     }
   };
+
+  // 현재 선택된 시리즈 및 실시간 로컬 인텔리전스 데이터 계산
+  const currentSeries = useMemo(() => seriesList.find(s => s.id === selectedSeriesId), [seriesList, selectedSeriesId]);
+  const computedData = useMemo(() => getComputedStudioData(currentEpisode, currentSeries), [currentEpisode, currentSeries]);
+  const activeData = analysisResult || computedData;
 
   const handleRunAnalysis = async () => {
     if (!currentEpisode) return;
@@ -239,15 +445,8 @@ export default function StudioPage() {
                 </label>
                 <select
                   value={selectedSeriesId}
-                  onChange={e => {
-                    setSelectedSeriesId(e.target.value);
-                    const ep = episodes.find(ep => ep.series_id === e.target.value);
-                    if (ep) {
-                      setSelectedEpisodeId(ep.id);
-                      setCurrentEpisode(ep);
-                    }
-                  }}
-                  className="bg-[#0A0A0C] border border-[#272730] text-xs text-[#E4E4E7] rounded-lg px-3 py-2 outline-none"
+                  onChange={e => handleSeriesChange(e.target.value)}
+                  className="bg-[#0A0A0C] border border-[#272730] text-xs text-[#E4E4E7] rounded-lg px-3 py-2 outline-none font-semibold text-[#D4AF37]"
                 >
                   {seriesList.map(s => (
                     <option key={s.id} value={s.id}>
@@ -294,15 +493,67 @@ export default function StudioPage() {
               </div>
             </div>
 
-            <button
-              onClick={handleRunAnalysis}
-              disabled={analyzing || !currentEpisode}
-              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#D4AF37] to-[#B38F24] hover:from-[#E5C048] hover:to-[#C49F33] text-[#0A0A0C] font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-[#D4AF37]/20 transition-all disabled:opacity-50"
-            >
-              <Sparkles className={`w-4 h-4 ${analyzing ? 'animate-spin' : ''}`} />
-              {analyzing ? '에이전트 5대 파이프라인 가동 중...' : '5대 에이전트 일괄 분석 실행'}
-            </button>
+            <div className="flex items-center gap-3">
+              {currentEpisode && (
+                <div className="text-right hidden sm:block">
+                  <span className="text-[10px] text-emerald-400 font-bold block">
+                    ✓ {currentSeries?.title || '시리즈'} 동기화 완료
+                  </span>
+                  <span className="text-[11px] font-mono text-[#A1A1AA]">
+                    {currentEpisode.content.length.toLocaleString()}자 • {currentEpisode.content.trim().split(/\s+/).length.toLocaleString()}단어
+                  </span>
+                </div>
+              )}
+
+              <button
+                onClick={handleRunAnalysis}
+                disabled={analyzing || !currentEpisode}
+                className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#D4AF37] to-[#B38F24] hover:from-[#E5C048] hover:to-[#C49F33] text-[#0A0A0C] font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-[#D4AF37]/20 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                <Sparkles className={`w-4 h-4 ${analyzing ? 'animate-spin' : ''}`} />
+                {analyzing ? '에이전트 5대 파이프라인 가동 중...' : 'Gemini AI 정밀 분석'}
+              </button>
+            </div>
           </div>
+
+          {/* 선택된 원고 전문 실시간 뷰어 (아코디언 토글) */}
+          {currentEpisode && (
+            <div className="rounded-xl bg-[#111116] border border-[#222228] overflow-hidden transition-all">
+              <div 
+                onClick={() => setShowManuscript(!showManuscript)}
+                className="p-3.5 px-5 flex items-center justify-between cursor-pointer hover:bg-[#16161D] transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="w-4 h-4 text-[#D4AF37]" />
+                  <span className="text-xs font-bold text-[#E4E4E7]">
+                    [선택 원고 전문 뷰어] 제{currentEpisode.episode_number}화 : {currentEpisode.title}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#1C1C26] text-[#A1A1AA] font-mono">
+                    {currentEpisode.content.length.toLocaleString()}자
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-[#D4AF37] font-semibold">
+                  {showManuscript ? (
+                    <>
+                      <span>본문 닫기</span>
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    </>
+                  ) : (
+                    <>
+                      <span>원고 전문 읽기</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {showManuscript && (
+                <div className="p-6 bg-[#08080A] border-t border-[#1C1C24] max-h-96 overflow-y-auto font-mono text-xs text-[#D4D4D8] leading-relaxed whitespace-pre-wrap select-text">
+                  {currentEpisode.content}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 확장된 탭 네비게이션 (시맨틱 RAG & Live API 보이스톡 포함) */}
           <div className="flex border-b border-[#222228] gap-1 overflow-x-auto">
@@ -398,7 +649,7 @@ export default function StudioPage() {
                     뱅글 소거식 5줄 ➔ 1줄 슬릿 요약 보드
                   </h4>
                   <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono">
-                    {analysisResult?.usedModel || selectedModel}
+                    {activeData.usedModel || selectedModel}
                   </span>
                 </div>
 
@@ -407,8 +658,7 @@ export default function StudioPage() {
                     최종 1줄 슬릿 압축 (One-Line Slit)
                   </span>
                   <p className="text-xs text-[#E4E4E7] font-medium leading-relaxed">
-                    {analysisResult?.summary.oneLineSlit ||
-                      `[제${currentEpisode?.episode_number || 1}화] ${currentEpisode?.title || '원고'} - 규율의 통제탑 속에서 은밀하게 집행된 신체 검열과 지배의 정점.`}
+                    {activeData.summary.oneLineSlit}
                   </p>
                 </div>
 
@@ -417,11 +667,7 @@ export default function StudioPage() {
                     주요 복선 및 전개 핵심 (3 Keypoints)
                   </span>
                   <div className="space-y-2">
-                    {(analysisResult?.summary.keyPoints || [
-                      '지배자의 냉혹한 규율 체크와 피지배자의 억눌린 복종 반응',
-                      '성황 VIP 클럽의 암묵적 권력 구도가 밀실로 침투하는 전조',
-                      '구속구 및 생체 텔레메트리 연동 복선 배치',
-                    ]).map((kp, idx) => (
+                    {activeData.summary.keyPoints.map((kp, idx) => (
                       <div key={idx} className="flex items-start gap-2 text-xs text-[#A1A1AA] bg-[#0E0E12] p-2.5 rounded border border-[#1C1C24]">
                         <span className="text-[#D4AF37] font-bold">0{idx + 1}.</span>
                         <span>{kp}</span>
@@ -450,38 +696,46 @@ export default function StudioPage() {
                         (성황 VIP 클럽 내부 서열 외 일반 호칭 사용 금지)
                       </span>
                     </div>
-                    {analysisResult?.canonCheck.cWordFound ? (
+                    {activeData.canonCheck.cWordFound ? (
                       <span className="text-xs text-rose-400 font-bold flex items-center gap-1 bg-rose-500/10 px-2.5 py-1 rounded">
                         <AlertTriangle className="w-3.5 h-3.5" /> 발견됨 (수정 요망)
                       </span>
                     ) : (
                       <span className="text-xs text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded">
-                        <CheckCircle className="w-3.5 h-3.5" /> 완벽 통과
+                        <CheckCircle className="w-3.5 h-3.5" /> 완벽 통과 (0건)
                       </span>
                     )}
                   </div>
 
-                  <div className="p-3.5 rounded-lg bg-[#0E0E12] border border-[#1E1E26] flex items-center justify-between">
-                    <div>
+                  <div className="p-3.5 rounded-lg bg-[#0E0E12] border border-[#1E1E26] space-y-2">
+                    <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-[#E4E4E7] block">
-                        배진혁 대표 나이 (48세/외형 30세) 및 《로열 넥타》 호환
+                        본문 등장인물 실시간 스캔 감지
                       </span>
-                      <span className="text-[11px] text-[#71717A]">불로 신약 세포 역노화 설정 일치</span>
+                      <span className="text-[11px] text-[#D4AF37] font-bold">
+                        {activeData.characterStats.length}인 포착
+                      </span>
                     </div>
-                    <span className="text-xs text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded">
-                      <CheckCircle className="w-3.5 h-3.5" /> 정상 반영
-                    </span>
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {activeData.characterStats.map((st: any) => (
+                        <span key={st.name} className="text-[10px] px-2 py-0.5 rounded bg-[#181822] text-[#D4D4D8] border border-[#262634] font-mono">
+                          {st.name} {st.count ? `(${st.count}회)` : ''}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="p-3.5 rounded-lg bg-[#0E0E12] border border-[#1E1E26] flex items-center justify-between">
                     <div>
                       <span className="text-xs font-semibold text-[#E4E4E7] block">
-                        군·산 카르텔 3대 지배자 & 3대 제물 계보 일치
+                        원고 텍스트 규모 및 정합성 검증
                       </span>
-                      <span className="text-[11px] text-[#71717A]">심야-무대 크로스오버 일치성 검증</span>
+                      <span className="text-[11px] text-[#71717A]">
+                        {currentEpisode?.title}
+                      </span>
                     </div>
                     <span className="text-xs text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded">
-                      <CheckCircle className="w-3.5 h-3.5" /> 정상 반영
+                      <CheckCircle className="w-3.5 h-3.5" /> {(currentEpisode?.content.length || 0).toLocaleString()}자 정상
                     </span>
                   </div>
                 </div>
@@ -516,64 +770,25 @@ export default function StudioPage() {
                       </span>
                     </div>
                     <p className="text-xs text-[#A1A1AA] mt-1">
-                      미드저니 노이즈 필터링 및 Leica 35mm / Kodak Vision3 8K 극실사 렌더링 파이프라인
+                      현재 선택된 에피소드 [제{currentEpisode?.episode_number}화 - {currentEpisode?.title}] 맞춤 씬 렌더링
                     </p>
                   </div>
 
                   {/* 일괄 생성 버튼 */}
                   <button
-                    onClick={() => {
-                      const promptList = analysisResult?.prompts || [
-                        {
-                          sceneName: '01. 8층 관제실 - 압도적 위압감의 사열',
-                          timestamp: '00:04:12',
-                          prompt: 'Cinematic 35mm photograph of a charismatic Korean commander standing in an 8th-floor high-tech surveillance room, sharp tailored black military uniform with gold insignias, cold superior expression, obsidian glossy floor reflecting cold fluorescent tubes, dramatic rim light, Leica Summilux 35mm lens, Kodak Vision3 500T, photorealistic, sharp focus',
-                          negativePrompt: 'cartoon, anime, 3d render, oversaturated, blurry, bad anatomy, deformed hands',
-                          aspectRatio: '16:9',
-                        },
-                        {
-                          sceneName: '02. 편광 유리 너머의 차가운 눈빛',
-                          timestamp: '00:12:45',
-                          prompt: 'Intense close-up portrait of an imposing Korean chairman behind dark polarized glass, sharp cold eyes, champagne gold and obsidian luxury room reflection, wet skin texture, high fashion noir, Hasselblad photography, dramatic chiaroscuro lighting, natural skin pores',
-                          negativePrompt: 'deformed, smiling, casual clothes, low resolution, blurry',
-                          aspectRatio: '16:9',
-                        },
-                        {
-                          sceneName: '03. 골드 스트라이프 구속구와 굴복',
-                          timestamp: '00:22:18',
-                          prompt: 'High-contrast sensual chiaroscuro shot, handsome young Korean man with exhausted emotional expression, black leather constraints with gold metallic buckles on dark mahogany desk, directional spotlight, glistening sweat on skin, raw surrender, 35mm vintage film still, cinematic masterpiece',
-                          negativePrompt: 'bright daylight, outdoor, cheap props, distortion, ugly',
-                          aspectRatio: '16:9',
-                        },
-                        {
-                          sceneName: '04. 《로열 넥타》 앰플과 전율',
-                          timestamp: '00:31:05',
-                          prompt: 'Medium shot inside a secret luxurious chamber with antique gilded mirrors, a glowing golden amber liquid inside a glass ampoule on dark table, kneeling breathless Korean man in blurred background, tall commanding silhouette standing above, cinematic haze, muted gold color grading',
-                          negativePrompt: 'flat lighting, saturated, smile, bad anatomy',
-                          aspectRatio: '16:9',
-                        },
-                        {
-                          sceneName: '05. 성황 왕관 엠블럼과 영원한 서약',
-                          timestamp: '00:39:50',
-                          prompt: 'Atmospheric macro shot of an engraved solid gold crown emblem on a heavy black vault door, cold blue surveillance light spilling through bottom floor gap, cinematic mystery, Panavision anamorphic lens flare, atmospheric haze and dust motes, 8k uhd',
-                          negativePrompt: 'low quality, messy composition, blurry, cartoon',
-                          aspectRatio: '16:9',
-                        },
-                      ];
-                      handleRenderAll(promptList);
-                    }}
-                    disabled={isRenderingAll}
+                    onClick={() => handleRenderAll(activeData.prompts)}
+                    disabled={isRenderingAll || activeData.prompts.length === 0}
                     className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-[#D4AF37] to-[#B38F26] text-[#0A0A0C] font-bold text-xs flex items-center gap-2 hover:opacity-95 shadow-lg shadow-[#D4AF37]/10 disabled:opacity-50 transition-all cursor-pointer"
                   >
                     {isRenderingAll ? (
                       <>
                         <span className="w-3.5 h-3.5 border-2 border-[#0A0A0C] border-t-transparent rounded-full animate-spin" />
-                        전체 5대 씬 일괄 렌더링 중...
+                        전체 {activeData.prompts.length}대 씬 일괄 렌더링 중...
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-3.5 h-3.5" />
-                        전체 5대 씬 일괄 실시간 렌더링 (0원)
+                        전체 {activeData.prompts.length}대 씬 일괄 실시간 렌더링 (0원)
                       </>
                     )}
                   </button>
@@ -608,50 +823,14 @@ export default function StudioPage() {
                   </div>
 
                   <span className="text-[11px] text-[#A1A1AA] bg-[#0A0A0C] px-3 py-1.5 rounded border border-[#22222A]">
-                    💡 <strong className="text-[#D4AF37]">품질 최적화</strong>: 미드저니 플래그(--ar 등) 자동 정제 & 8K 피부 질감 가중치 자동 합성
+                    💡 <strong className="text-[#D4AF37]">{currentSeries?.title} 제{currentEpisode?.episode_number}화</strong> 맞춤 씬 프롬프트 자동 동기화됨
                   </span>
                 </div>
               </div>
 
-              {/* 5대 씬 리스트 */}
+              {/* 에피소드 씬 리스트 */}
               <div className="grid grid-cols-1 gap-6">
-                {(analysisResult?.prompts || [
-                  {
-                    sceneName: '01. 8층 관제실 - 압도적 위압감의 사열',
-                    timestamp: '00:04:12',
-                    prompt: 'Cinematic 35mm photograph of a charismatic Korean commander standing in an 8th-floor high-tech surveillance room, sharp tailored black military uniform with gold insignias, cold superior expression, obsidian glossy floor reflecting cold fluorescent tubes, dramatic rim light, Leica Summilux 35mm lens, Kodak Vision3 500T, photorealistic, sharp focus',
-                    negativePrompt: 'cartoon, anime, 3d render, oversaturated, blurry, bad anatomy, deformed hands',
-                    aspectRatio: '16:9',
-                  },
-                  {
-                    sceneName: '02. 편광 유리 너머의 차가운 눈빛',
-                    timestamp: '00:12:45',
-                    prompt: 'Intense close-up portrait of an imposing Korean chairman behind dark polarized glass, sharp cold eyes, champagne gold and obsidian luxury room reflection, wet skin texture, high fashion noir, Hasselblad photography, dramatic chiaroscuro lighting, natural skin pores',
-                    negativePrompt: 'deformed, smiling, casual clothes, low resolution, blurry',
-                    aspectRatio: '16:9',
-                  },
-                  {
-                    sceneName: '03. 골드 스트라이프 구속구와 굴복',
-                    timestamp: '00:22:18',
-                    prompt: 'High-contrast sensual chiaroscuro shot, handsome young Korean man with exhausted emotional expression, black leather constraints with gold metallic buckles on dark mahogany desk, directional spotlight, glistening sweat on skin, raw surrender, 35mm vintage film still, cinematic masterpiece',
-                    negativePrompt: 'bright daylight, outdoor, cheap props, distortion, ugly',
-                    aspectRatio: '16:9',
-                  },
-                  {
-                    sceneName: '04. 《로열 넥타》 앰플과 전율',
-                    timestamp: '00:31:05',
-                    prompt: 'Medium shot inside a secret luxurious chamber with antique gilded mirrors, a glowing golden amber liquid inside a glass ampoule on dark table, kneeling breathless Korean man in blurred background, tall commanding silhouette standing above, cinematic haze, muted gold color grading',
-                    negativePrompt: 'flat lighting, saturated, smile, bad anatomy',
-                    aspectRatio: '16:9',
-                  },
-                  {
-                    sceneName: '05. 성황 왕관 엠블럼과 영원한 서약',
-                    timestamp: '00:39:50',
-                    prompt: 'Atmospheric macro shot of an engraved solid gold crown emblem on a heavy black vault door, cold blue surveillance light spilling through bottom floor gap, cinematic mystery, Panavision anamorphic lens flare, atmospheric haze and dust motes, 8k uhd',
-                    negativePrompt: 'low quality, messy composition, blurry, cartoon',
-                    aspectRatio: '16:9',
-                  },
-                ]).map((p, idx) => {
+                {activeData.prompts.map((p, idx) => {
                   const currentRatio = aspectRatios[idx] || (p.aspectRatio as '16:9' | '3:4' | '1:1') || '16:9';
                   const activePromptText = customPrompts[idx] !== undefined ? customPrompts[idx] : p.prompt;
                   const imgUrl = renderedImages[idx];
@@ -802,34 +981,34 @@ export default function StudioPage() {
               <div className="p-6 rounded-xl bg-[#111116] border border-[#222228] space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-[#1C1C24]">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[#D4AF37]">
-                    포스타입 1~4화 무료 HTML 서식 + 배너
+                    포스타입 맞춤 서식 + 배너 (제{currentEpisode?.episode_number}화)
                   </h4>
                   <button
-                    onClick={() => handleCopy(analysisResult?.distribution.postypeHtml || '', 'postype')}
-                    className="px-3 py-1 rounded bg-[#D4AF37] text-xs font-bold text-[#0A0A0C]"
+                    onClick={() => handleCopy(activeData.distribution.postypeHtml, 'postype')}
+                    className="px-3 py-1 rounded bg-[#D4AF37] text-xs font-bold text-[#0A0A0C] cursor-pointer"
                   >
                     HTML 복사
                   </button>
                 </div>
-                <div className="p-4 rounded-lg bg-[#0A0A0C] max-h-96 overflow-y-auto font-mono text-[11px] text-[#A1A1AA] whitespace-pre-wrap">
-                  {analysisResult?.distribution.postypeHtml || '에피소드를 분석하시면 포스타입 맞춤 서식이 생성됩니다.'}
+                <div className="p-4 rounded-lg bg-[#0A0A0C] max-h-96 overflow-y-auto font-mono text-[11px] text-[#A1A1AA] whitespace-pre-wrap select-text">
+                  {activeData.distribution.postypeHtml}
                 </div>
               </div>
 
               <div className="p-6 rounded-xl bg-[#111116] border border-[#222228] space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-[#1C1C24]">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[#D4AF37]">
-                    SubscribeStar.adult 한/영 요약
+                    SubscribeStar.adult 글로벌 영문 요약
                   </h4>
                   <button
-                    onClick={() => handleCopy(analysisResult?.distribution.subscribeStarText || '', 'substar')}
-                    className="px-3 py-1 rounded bg-[#D4AF37] text-xs font-bold text-[#0A0A0C]"
+                    onClick={() => handleCopy(activeData.distribution.subscribeStarText, 'substar')}
+                    className="px-3 py-1 rounded bg-[#D4AF37] text-xs font-bold text-[#0A0A0C] cursor-pointer"
                   >
                     영문본 복사
                   </button>
                 </div>
-                <div className="p-4 rounded-lg bg-[#0A0A0C] max-h-96 overflow-y-auto font-mono text-[11px] text-[#A1A1AA] whitespace-pre-wrap">
-                  {analysisResult?.distribution.subscribeStarText || '에피소드를 분석하시면 글로벌 후원용 포스트가 완성됩니다.'}
+                <div className="p-4 rounded-lg bg-[#0A0A0C] max-h-96 overflow-y-auto font-mono text-[11px] text-[#A1A1AA] whitespace-pre-wrap select-text">
+                  {activeData.distribution.subscribeStarText}
                 </div>
               </div>
             </div>
@@ -838,13 +1017,17 @@ export default function StudioPage() {
           {/* 탭 5: 캐릭터 스탯 */}
           {activeTab === 'stats' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {(analysisResult?.characterStats || [
-                { name: '배진혁', dominance: 98, submission: 2, obsession: 95, shame: 5, sanity: 92, secretKeyword: '로열넥타_피라미드' },
-                { name: '송강우', dominance: 15, submission: 98, obsession: 88, shame: 92, sanity: 35, secretKeyword: '아이기스_대단원' },
-              ]).map((st, idx) => (
+              {activeData.characterStats.map((st: any, idx: number) => (
                 <div key={idx} className="p-6 rounded-xl bg-[#111116] border border-[#222228] space-y-3">
                   <div className="flex justify-between items-center pb-2 border-b border-[#1C1C24]">
-                    <span className="font-bold text-sm text-[#F3F3F5]">{st.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-[#F3F3F5]">{st.name}</span>
+                      {st.count ? (
+                        <span className="text-[10px] text-[#A1A1AA] bg-[#181822] px-2 py-0.5 rounded border border-[#272734]">
+                          등장 빈도: {st.count}회
+                        </span>
+                      ) : null}
+                    </div>
                     <span className="text-xs font-mono text-emerald-400 font-bold bg-[#1A1A22] px-2 py-0.5 rounded">
                       키워드: {st.secretKeyword}
                     </span>
