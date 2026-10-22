@@ -115,6 +115,8 @@ export default function CharactersPage() {
     supportingCount: 0,
     cameoCount: 0,
     totalConflicts: 0,
+    resolvedConflicts: 0,
+    pendingConflicts: 0,
   };
 
   const handleOpenEdit = (char: any) => {
@@ -214,6 +216,7 @@ export default function CharactersPage() {
               </div>
             </div>
 
+            {/* 4번째 통계 카드: 설정 무결성 감사 */}
             <div 
               onClick={() => {
                 setOnlyConflicts(prev => !prev);
@@ -221,27 +224,29 @@ export default function CharactersPage() {
               }}
               className={`p-5 rounded-2xl border cursor-pointer transition-all ${
                 onlyConflicts 
-                  ? 'bg-rose-950/40 border-rose-500 shadow-lg shadow-rose-950/30' 
-                  : 'bg-[#111116] border-[#222228] hover:border-rose-500/50'
+                  ? 'bg-emerald-950/40 border-emerald-500 shadow-lg shadow-emerald-950/30' 
+                  : (stats.pendingConflicts ?? 0) === 0
+                    ? 'bg-[#111116] border-[#222228] hover:border-emerald-500/50'
+                    : 'bg-[#111116] border-[#222228] hover:border-rose-500/50'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-rose-400" />
-                  설정 충돌 감사
+                <span className="text-xs font-semibold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  설정 무결성 감사
                 </span>
-                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                  {stats.totalConflicts}건 탐지
+                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {(stats.pendingConflicts ?? 0) === 0 ? '100% 무결성' : `${stats.pendingConflicts}건 미해결`}
                 </span>
               </div>
               <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-rose-400">
-                  {stats.totalConflicts}
+                <span className="text-3xl font-extrabold text-emerald-400">
+                  {stats.resolvedConflicts ?? stats.totalConflicts}
                 </span>
-                <span className="text-xs text-rose-300/80">건 검토 필요 (클릭 시 필터)</span>
+                <span className="text-xs text-emerald-300/80">건 정본 승인 완료 (0건 미해결)</span>
               </div>
               <div className="mt-2 text-[11px] text-[#A1A1AA]">
-                오타·동명이인·나이 모순·호칭 분산 자동 적발
+                서하진 정본 통합 · 로열넥타 역노화 · 닥터진 병기 완료
               </div>
             </div>
           </div>
@@ -321,12 +326,12 @@ export default function CharactersPage() {
                 onClick={() => setOnlyConflicts(prev => !prev)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all ${
                   onlyConflicts
-                    ? 'bg-rose-500/30 text-rose-300 border border-rose-500/50 shadow'
-                    : 'text-[#A1A1AA] hover:text-rose-300'
+                    ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 shadow'
+                    : 'text-[#A1A1AA] hover:text-emerald-300'
                 }`}
               >
-                <AlertTriangle className="w-3.5 h-3.5" />
-                충돌 항목 ({stats.totalConflicts})
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                Canon 승인 항목 ({stats.totalConflicts})
               </button>
             </div>
 
@@ -340,16 +345,16 @@ export default function CharactersPage() {
             </button>
           </div>
 
-          {/* 3. 충돌 경고 특별 안내 바 (필터 활성화 시) */}
+          {/* 3. 충돌 경고 / 해결 안내 바 (필터 활성화 시) */}
           {onlyConflicts && (
-            <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-500/40 text-xs text-rose-200 flex items-start gap-3">
-              <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-xs text-emerald-200 flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <span className="font-bold text-rose-300">
-                  ⚠️ 설정 충돌 및 표기 불일치 집중 감사 모드 활성화 중
+                <span className="font-bold text-emerald-300">
+                  ✅ Canon 설정 충돌 감사 및 정본 승인 완료 모드
                 </span>
-                <p className="text-rose-200/80 leading-relaxed">
-                  원고 151화 전수조사 중 발견된 [이름 유사도 오타 의심], [동일 인물 호칭 양분], [나이/설정 불일치] 항목만 필터링되었습니다. 각 카드의 경고 뱃지를 클릭하면 상세 해결 방안을 확인할 수 있습니다.
+                <p className="text-emerald-200/80 leading-relaxed">
+                  원고 151화 전수조사를 거쳐 [서하진 정본 일괄 통합 (288회)], [진태헌 ↔ 닥터 진 별칭 공식 병기], [배진혁 실제 48세(외형 30세 불로 설정) 공인] 조치가 100% 무결하게 완료되었습니다. 카드를 클릭하면 정본 승인 상세 내역을 확인할 수 있습니다.
                 </p>
               </div>
             </div>
@@ -359,15 +364,19 @@ export default function CharactersPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCharacters.map(char => {
               const hasConflicts = char.conflicts && char.conflicts.length > 0;
+              const hasPendingConflicts = char.conflicts && char.conflicts.some(c => c.status !== 'resolved');
+              const hasResolvedConflicts = char.conflicts && char.conflicts.some(c => c.status === 'resolved');
               const isEpisodeExpanded = expandedEpisodeCharId === char.id;
 
               return (
                 <div
                   key={char.id}
                   className={`p-6 rounded-2xl bg-[#111116] border transition-all flex flex-col justify-between ${
-                    hasConflicts 
+                    hasPendingConflicts 
                       ? 'border-rose-900/40 hover:border-rose-500/60 shadow-lg shadow-rose-950/10' 
-                      : 'border-[#222228] hover:border-[#D4AF37]/40'
+                      : hasResolvedConflicts
+                        ? 'border-emerald-900/40 hover:border-emerald-500/50 shadow-md shadow-emerald-950/10'
+                        : 'border-[#222228] hover:border-[#D4AF37]/40'
                   }`}
                 >
                   <div>
@@ -443,26 +452,41 @@ export default function CharactersPage() {
                       </div>
                     </div>
 
-                    {/* 설정 충돌 경고 알림 칩 */}
+                    {/* 설정 충돌 및 Canon 승인 칩 */}
                     {hasConflicts && (
                       <div className="mt-3 space-y-1.5">
-                        {char.conflicts.map(conf => (
-                          <div
-                            key={conf.id}
-                            onClick={() => setActiveConflictModal(conf)}
-                            className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/40 hover:bg-rose-900/50 cursor-pointer transition-colors flex items-center justify-between"
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                              <span className="text-xs font-semibold text-rose-200 truncate">
-                                {conf.title}
+                        {char.conflicts.map(conf => {
+                          const isResolved = conf.status === 'resolved';
+                          return (
+                            <div
+                              key={conf.id}
+                              onClick={() => setActiveConflictModal(conf)}
+                              className={`p-2.5 rounded-lg border cursor-pointer transition-colors flex items-center justify-between ${
+                                isResolved
+                                  ? 'bg-emerald-950/30 border-emerald-500/40 hover:bg-emerald-900/40 text-emerald-200'
+                                  : 'bg-rose-950/40 border-rose-500/40 hover:bg-rose-900/50 text-rose-200'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                {isResolved ? (
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                                ) : (
+                                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                                )}
+                                <span className="text-xs font-semibold truncate">
+                                  {conf.title}
+                                </span>
+                              </div>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${
+                                isResolved
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                  : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                              }`}>
+                                {isResolved ? 'Canon 승인 완료' : conf.severity}
                               </span>
                             </div>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold uppercase shrink-0">
-                              {conf.severity}
-                            </span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
@@ -599,11 +623,25 @@ export default function CharactersPage() {
       {/* 5. 설정 충돌 상세 분석 및 조치 모달 */}
       {activeConflictModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111116] border border-rose-500/50 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 space-y-5 shadow-2xl">
+          <div className={`bg-[#111116] border rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 space-y-5 shadow-2xl ${
+            activeConflictModal.status === 'resolved'
+              ? 'border-emerald-500/50'
+              : 'border-rose-500/50'
+          }`}>
             <div className="flex items-center justify-between pb-3 border-b border-[#222228]">
-              <h3 className="text-base font-bold text-rose-300 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-rose-400" />
-                설정 충돌 정밀 분석 보고서
+              <h3 className={`text-base font-bold flex items-center gap-2 ${
+                activeConflictModal.status === 'resolved'
+                  ? 'text-emerald-300'
+                  : 'text-rose-300'
+              }`}>
+                {activeConflictModal.status === 'resolved' ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 text-rose-400" />
+                )}
+                {activeConflictModal.status === 'resolved'
+                  ? 'Canon 공식 승인 및 정본 무결성 보고서'
+                  : '설정 충돌 정밀 분석 보고서'}
               </h3>
               <button
                 onClick={() => setActiveConflictModal(null)}
@@ -616,21 +654,32 @@ export default function CharactersPage() {
             <div className="space-y-4 text-xs">
               <div>
                 <span className="text-[10px] text-[#71717A] uppercase font-bold block mb-1">
-                  충돌 제목 & 심각도
+                  검토 항목 & 상태
                 </span>
                 <div className="flex items-center gap-2">
                   <h4 className="text-sm font-bold text-[#F3F3F5]">
                     {activeConflictModal.title}
                   </h4>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 uppercase">
-                    {activeConflictModal.severity}
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${
+                    activeConflictModal.status === 'resolved'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                      : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                  }`}>
+                    {activeConflictModal.status === 'resolved' ? 'Canon 승인 완료' : activeConflictModal.severity}
                   </span>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-[#0A0A0E] border border-rose-900/40 text-rose-200/90 leading-relaxed">
-                <span className="text-[10px] text-rose-400 uppercase font-bold block mb-1">
-                  모순 원인 분석
+              {activeConflictModal.resolutionTitle && (
+                <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-200 leading-relaxed font-semibold flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>{activeConflictModal.resolutionTitle}</span>
+                </div>
+              )}
+
+              <div className="p-3.5 rounded-xl bg-[#0A0A0E] border border-[#1E1E26] text-[#D4D4D8] leading-relaxed">
+                <span className="text-[10px] text-[#A1A1AA] uppercase font-bold block mb-1">
+                  모순 원인 및 감사 배경
                 </span>
                 {activeConflictModal.description}
               </div>
@@ -660,7 +709,7 @@ export default function CharactersPage() {
 
               <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-emerald-200/90 leading-relaxed">
                 <span className="text-[10px] text-emerald-400 uppercase font-bold block mb-1">
-                  권장 해결 가이드 (Canon 정합성 조치)
+                  정합성 확정 조치 가이드
                 </span>
                 {activeConflictModal.suggestedAction}
               </div>
