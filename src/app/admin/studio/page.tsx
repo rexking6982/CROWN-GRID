@@ -63,6 +63,8 @@ export default function StudioPage() {
   const [isRendering, setIsRendering] = useState<Record<number, boolean>>({});
   const [isRenderingAll, setIsRenderingAll] = useState<boolean>(false);
   const [aspectRatios, setAspectRatios] = useState<Record<number, '16:9' | '3:4' | '1:1'>>({});
+  const [selectedStyle, setSelectedStyle] = useState<'cinematic' | 'portrait' | 'webtoon'>('cinematic');
+  const [customPrompts, setCustomPrompts] = useState<Record<number, string>>({});
   const [modalImage, setModalImage] = useState<string | null>(null);
 
   // 데이터 로드
@@ -167,15 +169,16 @@ export default function StudioPage() {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  // 실시간 AI 이미지 렌더링 (100% 무료 Flux/SDXL)
-  const handleRenderImage = async (idx: number, prompt: string) => {
+  // 실시간 AI 이미지 렌더링 (100% 무료 Flux/SDXL 기반 초정밀 렌더러)
+  const handleRenderImage = async (idx: number, promptText: string) => {
     const ratio = aspectRatios[idx] || '16:9';
+    const finalPrompt = customPrompts[idx] !== undefined ? customPrompts[idx] : promptText;
     setIsRendering(prev => ({ ...prev, [idx]: true }));
     try {
       const res = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, aspectRatio: ratio }),
+        body: JSON.stringify({ prompt: finalPrompt, aspectRatio: ratio, style: selectedStyle }),
       });
       const data = await res.json();
       if (data.success && data.imageUrl) {
@@ -191,7 +194,8 @@ export default function StudioPage() {
   const handleRenderAll = async (prompts: Array<{ prompt: string }>) => {
     setIsRenderingAll(true);
     for (let i = 0; i < prompts.length; i++) {
-      await handleRenderImage(i, prompts[i].prompt);
+      const pText = customPrompts[i] !== undefined ? customPrompts[i] : prompts[i].prompt;
+      await handleRenderImage(i, pText);
     }
     setIsRenderingAll(false);
   };
@@ -499,78 +503,114 @@ export default function StudioPage() {
           {activeTab === 'prompts' && (
             <div className="space-y-6">
               {/* 상단 렌더러 컨트롤러 바 */}
-              <div className="p-5 rounded-xl bg-gradient-to-r from-[#18151D] via-[#121218] to-[#14121A] border border-[#D4AF37]/30 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <ImageIcon className="w-5 h-5 text-[#D4AF37]" />
-                    <h3 className="text-sm font-bold text-[#F3F3F5] tracking-wide">
-                      35mm 시네마틱 프롬프트 & 실시간 AI 렌더러
-                    </h3>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/30">
-                      100% 무료 무제한 (비용 $0 / Flux AI)
-                    </span>
+              <div className="p-5 rounded-xl bg-gradient-to-r from-[#18151D] via-[#121218] to-[#14121A] border border-[#D4AF37]/30 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="w-5 h-5 text-[#D4AF37]" />
+                      <h3 className="text-sm font-bold text-[#F3F3F5] tracking-wide">
+                        35mm 시네마틱 프롬프트 & 실시간 AI 렌더러 (Pro Optimizer)
+                      </h3>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/30">
+                        100% 무료 무제한 (비용 $0 / Flux AI)
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#A1A1AA] mt-1">
+                      미드저니 노이즈 필터링 및 Leica 35mm / Kodak Vision3 8K 극실사 렌더링 파이프라인
+                    </p>
                   </div>
-                  <p className="text-xs text-[#A1A1AA] mt-1">
-                    버튼 클릭 한 번으로 극장판 35mm 고화질 비주얼을 실시간 생성·미리보기·로컬 저장합니다.
-                  </p>
+
+                  {/* 일괄 생성 버튼 */}
+                  <button
+                    onClick={() => {
+                      const promptList = analysisResult?.prompts || [
+                        {
+                          sceneName: '01. 8층 관제실 - 압도적 위압감의 사열',
+                          timestamp: '00:04:12',
+                          prompt: 'Cinematic 35mm photograph of a charismatic Korean commander standing in an 8th-floor high-tech surveillance room, sharp tailored black military uniform with gold insignias, cold superior expression, obsidian glossy floor reflecting cold fluorescent tubes, dramatic rim light, Leica Summilux 35mm lens, Kodak Vision3 500T, photorealistic, sharp focus',
+                          negativePrompt: 'cartoon, anime, 3d render, oversaturated, blurry, bad anatomy, deformed hands',
+                          aspectRatio: '16:9',
+                        },
+                        {
+                          sceneName: '02. 편광 유리 너머의 차가운 눈빛',
+                          timestamp: '00:12:45',
+                          prompt: 'Intense close-up portrait of an imposing Korean chairman behind dark polarized glass, sharp cold eyes, champagne gold and obsidian luxury room reflection, wet skin texture, high fashion noir, Hasselblad photography, dramatic chiaroscuro lighting, natural skin pores',
+                          negativePrompt: 'deformed, smiling, casual clothes, low resolution, blurry',
+                          aspectRatio: '16:9',
+                        },
+                        {
+                          sceneName: '03. 골드 스트라이프 구속구와 굴복',
+                          timestamp: '00:22:18',
+                          prompt: 'High-contrast sensual chiaroscuro shot, handsome young Korean man with exhausted emotional expression, black leather constraints with gold metallic buckles on dark mahogany desk, directional spotlight, glistening sweat on skin, raw surrender, 35mm vintage film still, cinematic masterpiece',
+                          negativePrompt: 'bright daylight, outdoor, cheap props, distortion, ugly',
+                          aspectRatio: '16:9',
+                        },
+                        {
+                          sceneName: '04. 《로열 넥타》 앰플과 전율',
+                          timestamp: '00:31:05',
+                          prompt: 'Medium shot inside a secret luxurious chamber with antique gilded mirrors, a glowing golden amber liquid inside a glass ampoule on dark table, kneeling breathless Korean man in blurred background, tall commanding silhouette standing above, cinematic haze, muted gold color grading',
+                          negativePrompt: 'flat lighting, saturated, smile, bad anatomy',
+                          aspectRatio: '16:9',
+                        },
+                        {
+                          sceneName: '05. 성황 왕관 엠블럼과 영원한 서약',
+                          timestamp: '00:39:50',
+                          prompt: 'Atmospheric macro shot of an engraved solid gold crown emblem on a heavy black vault door, cold blue surveillance light spilling through bottom floor gap, cinematic mystery, Panavision anamorphic lens flare, atmospheric haze and dust motes, 8k uhd',
+                          negativePrompt: 'low quality, messy composition, blurry, cartoon',
+                          aspectRatio: '16:9',
+                        },
+                      ];
+                      handleRenderAll(promptList);
+                    }}
+                    disabled={isRenderingAll}
+                    className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-[#D4AF37] to-[#B38F26] text-[#0A0A0C] font-bold text-xs flex items-center gap-2 hover:opacity-95 shadow-lg shadow-[#D4AF37]/10 disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    {isRenderingAll ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-[#0A0A0C] border-t-transparent rounded-full animate-spin" />
+                        전체 5대 씬 일괄 렌더링 중...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        전체 5대 씬 일괄 실시간 렌더링 (0원)
+                      </>
+                    )}
+                  </button>
                 </div>
 
-                <button
-                  onClick={() => {
-                    const promptList = analysisResult?.prompts || [
-                      {
-                        sceneName: '01. 8층 관제실 - 압도적 위압감의 사열',
-                        timestamp: '00:04:12',
-                        prompt: 'Cinematic 35mm film still, sharp focus, 1980s dark military aesthetic, cold fluorescent tube lighting reflecting on obsidian tile floor, sharp tailored dark uniform, subtle tension, atmospheric dust particles, shallow depth of field, Kodak Vision3 500T --ar 16:9 --style raw',
-                        negativePrompt: 'cartoon, anime, 3d render, oversaturated, blurry, bad anatomy',
-                        aspectRatio: '16:9',
-                      },
-                      {
-                        sceneName: '02. 편광 유리 너머의 차가운 눈빛',
-                        timestamp: '00:12:45',
-                        prompt: 'Dramatic close up shot, 35mm Leica M6, strong rim lighting in dark luxury room, champagne gold and obsidian accents, intense eye contact, cold superiority expression, wet skin texture, high fashion noir --ar 16:9 --v 6.0',
-                        negativePrompt: 'deformed, smiling, casual clothes, low resolution',
-                        aspectRatio: '16:9',
-                      },
-                      {
-                        sceneName: '03. 골드 스트라이프 구속구와 굴복',
-                        timestamp: '00:22:18',
-                        prompt: 'Sensual high-contrast chiaroscuro photography, dark room, polished leather constraints on dark polished mahogany table, sweat glistening under directional spotlight, raw emotional surrender, high aesthetic eroticism, grain, vintage film look --ar 16:9',
-                        negativePrompt: 'bright daylight, outdoor, cheap props, distortion',
-                        aspectRatio: '16:9',
-                      },
-                      {
-                        sceneName: '04. 《로열 넥타》 앰플과 전율',
-                        timestamp: '00:31:05',
-                        prompt: 'Medium shot through heavy antique mirror with golden patina, reflection of breathless exhausted figure kneeling, shadowed dominant figure standing behind, psychological domination, moody mist, muted tones --ar 16:9',
-                        negativePrompt: 'flat lighting, saturated, smile',
-                        aspectRatio: '16:9',
-                      },
-                      {
-                        sceneName: '05. 성황 왕관 엠블럼과 영원한 서약',
-                        timestamp: '00:39:50',
-                        prompt: 'Macro shot, heavy brass keyhole and locked steel soundproof door, engraved golden insignia glowing faintly, cold blue corridor light leaking from the bottom slit, cinematic mystery, Panavision anamorphic lens --ar 16:9',
-                        negativePrompt: 'low quality, messy composition, blurry',
-                        aspectRatio: '16:9',
-                      },
-                    ];
-                    handleRenderAll(promptList);
-                  }}
-                  disabled={isRenderingAll}
-                  className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-[#D4AF37] to-[#B38F26] text-[#0A0A0C] font-bold text-xs flex items-center gap-2 hover:opacity-95 shadow-lg shadow-[#D4AF37]/10 disabled:opacity-50 transition-all cursor-pointer"
-                >
-                  {isRenderingAll ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-[#0A0A0C] border-t-transparent rounded-full animate-spin" />
-                      전체 5대 씬 일괄 렌더링 중...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5" />
-                      전체 5대 씬 일괄 실시간 렌더링 (0원)
-                    </>
-                  )}
-                </button>
+                {/* 화풍 프리셋 및 품질 최적화 배너 */}
+                <div className="pt-3 border-t border-[#22222A] flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#A1A1AA] font-bold flex items-center gap-1">
+                      <Sliders className="w-3.5 h-3.5 text-[#D4AF37]" />
+                      화풍 프리셋:
+                    </span>
+                    <div className="flex bg-[#0A0A0C] border border-[#272730] rounded-lg p-0.5 text-xs">
+                      {[
+                        { id: 'cinematic', label: '🎬 35mm 극실사 영화 (추천)' },
+                        { id: 'portrait', label: '📸 스튜디오 인물 화보' },
+                        { id: 'webtoon', label: '🎨 다크 느와르 웹툰' },
+                      ].map(st => (
+                        <button
+                          key={st.id}
+                          onClick={() => setSelectedStyle(st.id as any)}
+                          className={`px-3 py-1.5 rounded-md font-semibold transition-colors cursor-pointer ${
+                            selectedStyle === st.id
+                              ? 'bg-[#D4AF37] text-black font-bold shadow'
+                              : 'text-[#A1A1AA] hover:text-[#F3F3F5]'
+                          }`}
+                        >
+                          {st.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <span className="text-[11px] text-[#A1A1AA] bg-[#0A0A0C] px-3 py-1.5 rounded border border-[#22222A]">
+                    💡 <strong className="text-[#D4AF37]">품질 최적화</strong>: 미드저니 플래그(--ar 등) 자동 정제 & 8K 피부 질감 가중치 자동 합성
+                  </span>
+                </div>
               </div>
 
               {/* 5대 씬 리스트 */}
@@ -579,40 +619,41 @@ export default function StudioPage() {
                   {
                     sceneName: '01. 8층 관제실 - 압도적 위압감의 사열',
                     timestamp: '00:04:12',
-                    prompt: 'Cinematic 35mm film still, sharp focus, 1980s dark military aesthetic, cold fluorescent tube lighting reflecting on obsidian tile floor, sharp tailored dark uniform, subtle tension, atmospheric dust particles, shallow depth of field, Kodak Vision3 500T --ar 16:9 --style raw',
-                    negativePrompt: 'cartoon, anime, 3d render, oversaturated, blurry, bad anatomy',
+                    prompt: 'Cinematic 35mm photograph of a charismatic Korean commander standing in an 8th-floor high-tech surveillance room, sharp tailored black military uniform with gold insignias, cold superior expression, obsidian glossy floor reflecting cold fluorescent tubes, dramatic rim light, Leica Summilux 35mm lens, Kodak Vision3 500T, photorealistic, sharp focus',
+                    negativePrompt: 'cartoon, anime, 3d render, oversaturated, blurry, bad anatomy, deformed hands',
                     aspectRatio: '16:9',
                   },
                   {
                     sceneName: '02. 편광 유리 너머의 차가운 눈빛',
                     timestamp: '00:12:45',
-                    prompt: 'Dramatic close up shot, 35mm Leica M6, strong rim lighting in dark luxury room, champagne gold and obsidian accents, intense eye contact, cold superiority expression, wet skin texture, high fashion noir --ar 16:9 --v 6.0',
-                    negativePrompt: 'deformed, smiling, casual clothes, low resolution',
+                    prompt: 'Intense close-up portrait of an imposing Korean chairman behind dark polarized glass, sharp cold eyes, champagne gold and obsidian luxury room reflection, wet skin texture, high fashion noir, Hasselblad photography, dramatic chiaroscuro lighting, natural skin pores',
+                    negativePrompt: 'deformed, smiling, casual clothes, low resolution, blurry',
                     aspectRatio: '16:9',
                   },
                   {
                     sceneName: '03. 골드 스트라이프 구속구와 굴복',
                     timestamp: '00:22:18',
-                    prompt: 'Sensual high-contrast chiaroscuro photography, dark room, polished leather constraints on dark polished mahogany table, sweat glistening under directional spotlight, raw emotional surrender, high aesthetic eroticism, grain, vintage film look --ar 16:9',
-                    negativePrompt: 'bright daylight, outdoor, cheap props, distortion',
+                    prompt: 'High-contrast sensual chiaroscuro shot, handsome young Korean man with exhausted emotional expression, black leather constraints with gold metallic buckles on dark mahogany desk, directional spotlight, glistening sweat on skin, raw surrender, 35mm vintage film still, cinematic masterpiece',
+                    negativePrompt: 'bright daylight, outdoor, cheap props, distortion, ugly',
                     aspectRatio: '16:9',
                   },
                   {
                     sceneName: '04. 《로열 넥타》 앰플과 전율',
                     timestamp: '00:31:05',
-                    prompt: 'Medium shot through heavy antique mirror with golden patina, reflection of breathless exhausted figure kneeling, shadowed dominant figure standing behind, psychological domination, moody mist, muted tones --ar 16:9',
-                    negativePrompt: 'flat lighting, saturated, smile',
+                    prompt: 'Medium shot inside a secret luxurious chamber with antique gilded mirrors, a glowing golden amber liquid inside a glass ampoule on dark table, kneeling breathless Korean man in blurred background, tall commanding silhouette standing above, cinematic haze, muted gold color grading',
+                    negativePrompt: 'flat lighting, saturated, smile, bad anatomy',
                     aspectRatio: '16:9',
                   },
                   {
                     sceneName: '05. 성황 왕관 엠블럼과 영원한 서약',
                     timestamp: '00:39:50',
-                    prompt: 'Macro shot, heavy brass keyhole and locked steel soundproof door, engraved golden insignia glowing faintly, cold blue corridor light leaking from the bottom slit, cinematic mystery, Panavision anamorphic lens --ar 16:9',
-                    negativePrompt: 'low quality, messy composition, blurry',
+                    prompt: 'Atmospheric macro shot of an engraved solid gold crown emblem on a heavy black vault door, cold blue surveillance light spilling through bottom floor gap, cinematic mystery, Panavision anamorphic lens flare, atmospheric haze and dust motes, 8k uhd',
+                    negativePrompt: 'low quality, messy composition, blurry, cartoon',
                     aspectRatio: '16:9',
                   },
                 ]).map((p, idx) => {
                   const currentRatio = aspectRatios[idx] || (p.aspectRatio as '16:9' | '3:4' | '1:1') || '16:9';
+                  const activePromptText = customPrompts[idx] !== undefined ? customPrompts[idx] : p.prompt;
                   const imgUrl = renderedImages[idx];
                   const rendering = isRendering[idx];
 
@@ -646,7 +687,7 @@ export default function StudioPage() {
                           </div>
 
                           <button
-                            onClick={() => handleCopy(p.prompt, `prompt-${idx}`)}
+                            onClick={() => handleCopy(activePromptText, `prompt-${idx}`)}
                             className="px-3 py-1.5 rounded-lg bg-[#1C1C24] hover:bg-[#272732] text-xs text-[#E4E4E7] border border-[#2E2E38] flex items-center gap-1.5 cursor-pointer"
                           >
                             {copiedKey === `prompt-${idx}` ? (
@@ -659,16 +700,26 @@ export default function StudioPage() {
                         </div>
                       </div>
 
-                      {/* 프롬프트 본문 */}
-                      <div className="bg-[#0A0A0C] p-3.5 rounded-lg border border-[#1C1C24] font-mono text-xs text-[#D4D4D8] leading-relaxed break-words">
-                        <span className="text-[#D4AF37] font-bold select-none mr-1.5">[PROMPT]</span>
-                        {p.prompt}
+                      {/* 프롬프트 편집 텍스트에어리어 (작가가 직접 수정 가능) */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] text-[#71717A]">
+                          <span className="font-semibold text-[#D4AF37] flex items-center gap-1">
+                            <FileText className="w-3 h-3" /> 프롬프트 (클릭하여 직접 수정 가능)
+                          </span>
+                          <span>미드저니 태그 자동 정제 • 8K 디테일 가중치 주입</span>
+                        </div>
+                        <textarea
+                          value={activePromptText}
+                          onChange={e => setCustomPrompts(prev => ({ ...prev, [idx]: e.target.value }))}
+                          rows={3}
+                          className="w-full bg-[#0A0A0C] p-3 rounded-lg border border-[#1C1C24] focus:border-[#D4AF37]/60 font-mono text-xs text-[#D4D4D8] leading-relaxed outline-none transition-colors resize-y"
+                        />
                       </div>
 
                       {/* 렌더링 액션 바 & 미리보기 */}
                       <div className="pt-1 flex flex-wrap items-center justify-between gap-3">
                         <button
-                          onClick={() => handleRenderImage(idx, p.prompt)}
+                          onClick={() => handleRenderImage(idx, activePromptText)}
                           disabled={rendering}
                           className="px-4 py-2 rounded-lg bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#D4AF37] font-bold text-xs flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
                         >
@@ -713,7 +764,7 @@ export default function StudioPage() {
                         <div className="w-full h-64 rounded-lg border border-[#2A2A38] bg-[#0E0E14] flex flex-col items-center justify-center gap-3 animate-pulse">
                           <span className="w-8 h-8 border-3 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
                           <p className="text-xs text-[#A1A1AA] font-mono">
-                            Flux Schnell 초고속 AI 모델로 35mm 영화적 텍스처 합성 중... (약 2~3초 소요)
+                            Flux 초고속 AI 모델로 35mm 영화적 텍스처 합성 중... (약 2~3초 소요)
                           </p>
                         </div>
                       )}
@@ -731,6 +782,8 @@ export default function StudioPage() {
                             <span>Flux Model</span>
                             <span className="text-[#D4AF37]">•</span>
                             <span>{currentRatio}</span>
+                            <span className="text-[#D4AF37]">•</span>
+                            <span>{selectedStyle}</span>
                             <span className="text-[#D4AF37]">•</span>
                             <span className="text-emerald-400 font-bold">$0 Free</span>
                           </div>
