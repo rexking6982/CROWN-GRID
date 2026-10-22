@@ -42,15 +42,16 @@ const ALL_CHARACTERS_DB = [
   { name: '권도진', dominance: 98, submission: 2, obsession: 96, shame: 5, sanity: 95, secretKeyword: '성황푸른매트' },
   { name: '배진혁', dominance: 99, submission: 1, obsession: 98, shame: 2, sanity: 96, secretKeyword: '로열넥타_1호' },
   { name: '송강우', dominance: 30, submission: 96, obsession: 88, shame: 90, sanity: 38, secretKeyword: '아이기스_백란' },
-  { name: '강태건', dominance: 95, submission: 6, obsession: 92, shame: 8, sanity: 88, secretKeyword: '통제탑_사격장' },
-  { name: '루시드', dominance: 20, submission: 98, obsession: 90, shame: 95, sanity: 30, secretKeyword: '골드초커_04' },
+  { name: '서하진', dominance: 95, submission: 5, obsession: 92, shame: 10, sanity: 90, secretKeyword: '성황성골_특전사' },
+  { name: '백도하', dominance: 30, submission: 92, obsession: 85, shame: 88, sanity: 40, secretKeyword: '데뷔조_4인' },
+  { name: '강태오', dominance: 88, submission: 20, obsession: 92, shame: 30, sanity: 60, secretKeyword: '탑아이돌_선배' },
   { name: '닥터 진', dominance: 96, submission: 4, obsession: 94, shame: 6, sanity: 93, secretKeyword: '임상차트_VIP' },
   { name: '진태헌', dominance: 96, submission: 4, obsession: 94, shame: 6, sanity: 93, secretKeyword: '비공개처치실' },
   { name: '강해든', dominance: 35, submission: 96, obsession: 85, shame: 94, sanity: 42, secretKeyword: '190cm_수영부' },
-  { name: '도지혁', dominance: 94, submission: 8, obsession: 95, shame: 12, sanity: 91, secretKeyword: '차음실_B9' },
-  { name: '윤시환', dominance: 91, submission: 12, obsession: 89, shame: 15, sanity: 87, secretKeyword: '설산기지_규율' },
-  { name: '서하준', dominance: 40, submission: 95, obsession: 82, shame: 90, sanity: 48, secretKeyword: '성황청색도복' },
-  { name: '최은혁', dominance: 97, submission: 3, obsession: 95, shame: 6, sanity: 94, secretKeyword: '학생자치규율' }
+  { name: '한결', dominance: 25, submission: 98, obsession: 88, shame: 96, sanity: 30, secretKeyword: '티타늄정조대_7cm' },
+  { name: '최민우', dominance: 80, submission: 20, obsession: 85, shame: 25, sanity: 78, secretKeyword: '설산_보안요원' },
+  { name: '박진태', dominance: 92, submission: 8, obsession: 95, shame: 10, sanity: 85, secretKeyword: '사모펀드_자금줄' },
+  { name: '한시원', dominance: 93, submission: 7, obsession: 94, shame: 8, sanity: 92, secretKeyword: '루미너스_상임이사' }
 ];
 
 function extractScenesFromContent(content: string, seriesTitle: string, epNum: number, epTitle: string) {
