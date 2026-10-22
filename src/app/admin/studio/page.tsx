@@ -506,6 +506,19 @@ export default function StudioPage() {
                 </div>
               )}
 
+              {currentEpisode && (
+                <a
+                  href={`/read/${currentEpisode.series_id}/${currentEpisode.episode_number}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 rounded-lg bg-[#181822] hover:bg-[#22222E] border border-[#2E2E3C] text-xs font-semibold text-[#E4E4E7] flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="새 탭에서 독자용 보안 리더기를 열어 실제 독자 화면을 검수합니다"
+                >
+                  <BookOpen className="w-4 h-4 text-[#D4AF37]" />
+                  <span>독자 화면 미리보기</span>
+                </a>
+              )}
+
               <button
                 onClick={handleRunAnalysis}
                 disabled={analyzing || !currentEpisode}
