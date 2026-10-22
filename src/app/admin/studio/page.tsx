@@ -767,77 +767,40 @@ export default function StudioPage() {
             </div>
           )}
 
-          {/* 탭 3: 35mm 프롬프트 & 실시간 AI 이미지 렌더러 */}
+          {/* 탭 3: 35mm 프롬프트 & 전문 생성 도구(Midjourney / FLUX) 최적화 센터 */}
           {activeTab === 'prompts' && (
             <div className="space-y-6">
-              {/* 상단 렌더러 컨트롤러 바 */}
+              {/* 상단 프로페셔널 프롬프트 안내 바 */}
               <div className="p-5 rounded-xl bg-gradient-to-r from-[#18151D] via-[#121218] to-[#14121A] border border-[#D4AF37]/30 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
                       <ImageIcon className="w-5 h-5 text-[#D4AF37]" />
                       <h3 className="text-sm font-bold text-[#F3F3F5] tracking-wide">
-                        35mm 시네마틱 프롬프트 & 실시간 AI 렌더러 (Pro Optimizer)
+                        35mm 시네마틱 프롬프트 & 공식 씬 삽화 아카이브 (Midjourney / FLUX Pro)
                       </h3>
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/30">
-                        100% 무료 무제한 (비용 $0 / Flux AI)
+                      <span className="text-[10px] bg-[#D4AF37]/15 text-[#D4AF37] font-bold px-2 py-0.5 rounded border border-[#D4AF37]/30">
+                        미드저니 v6.1 / FLUX Pro 전용 포맷
                       </span>
                     </div>
                     <p className="text-xs text-[#A1A1AA] mt-1">
-                      현재 선택된 에피소드 [제{currentEpisode?.episode_number}화 - {currentEpisode?.title}] 맞춤 씬 렌더링
+                      [제{currentEpisode?.episode_number}화 - {currentEpisode?.title}] 주요 씬 35mm 극실사 프롬프트 • 저품질 무료 API 배제 및 최고급 상용 생성기 완벽 호환
                     </p>
                   </div>
-
-                  {/* 일괄 생성 버튼 */}
-                  <button
-                    onClick={() => handleRenderAll(activeData.prompts)}
-                    disabled={isRenderingAll || activeData.prompts.length === 0}
-                    className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-[#D4AF37] to-[#B38F26] text-[#0A0A0C] font-bold text-xs flex items-center gap-2 hover:opacity-95 shadow-lg shadow-[#D4AF37]/10 disabled:opacity-50 transition-all cursor-pointer"
-                  >
-                    {isRenderingAll ? (
-                      <>
-                        <span className="w-3.5 h-3.5 border-2 border-[#0A0A0C] border-t-transparent rounded-full animate-spin" />
-                        전체 {activeData.prompts.length}대 씬 일괄 렌더링 중...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        전체 {activeData.prompts.length}대 씬 일괄 실시간 렌더링 (0원)
-                      </>
-                    )}
-                  </button>
                 </div>
 
-                {/* 화풍 프리셋 및 품질 최적화 배너 */}
+                {/* 품질 안내 배너 */}
                 <div className="pt-3 border-t border-[#22222A] flex flex-wrap items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#A1A1AA] font-bold flex items-center gap-1">
-                      <Sliders className="w-3.5 h-3.5 text-[#D4AF37]" />
-                      화풍 프리셋:
+                  <div className="text-xs text-[#A1A1AA] flex items-center gap-2">
+                    <span className="text-emerald-400 font-bold flex items-center gap-1">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                      저품질 무료 생성기 배제 완료:
                     </span>
-                    <div className="flex bg-[#0A0A0C] border border-[#272730] rounded-lg p-0.5 text-xs">
-                      {[
-                        { id: 'cinematic', label: '🎬 35mm 극실사 영화 (추천)' },
-                        { id: 'portrait', label: '📸 스튜디오 인물 화보' },
-                        { id: 'webtoon', label: '🎨 다크 느와르 웹툰' },
-                      ].map(st => (
-                        <button
-                          key={st.id}
-                          onClick={() => setSelectedStyle(st.id as any)}
-                          className={`px-3 py-1.5 rounded-md font-semibold transition-colors cursor-pointer ${
-                            selectedStyle === st.id
-                              ? 'bg-[#D4AF37] text-black font-bold shadow'
-                              : 'text-[#A1A1AA] hover:text-[#F3F3F5]'
-                          }`}
-                        >
-                          {st.label}
-                        </button>
-                      ))}
-                    </div>
+                    <span>얼굴 뭉개짐과 워터마크가 있는 무료 공개 API 대신, <strong>Midjourney v6.1</strong> 또는 <strong>FLUX.1</strong>에 직접 복사하여 초고화질로 출력하실 수 있도록 최적화되었습니다.</span>
                   </div>
 
                   <span className="text-[11px] text-[#A1A1AA] bg-[#0A0A0C] px-3 py-1.5 rounded border border-[#22222A]">
-                    💡 <strong className="text-[#D4AF37]">{currentSeries?.title} 제{currentEpisode?.episode_number}화</strong> 맞춤 씬 프롬프트 자동 동기화됨
+                    💡 <strong className="text-[#D4AF37]">{currentSeries?.title} 제{currentEpisode?.episode_number}화</strong> 씬별 극실사 디자인 토큰 적용됨
                   </span>
                 </div>
               </div>
@@ -848,7 +811,8 @@ export default function StudioPage() {
                   const currentRatio = aspectRatios[idx] || (p.aspectRatio as '16:9' | '3:4' | '1:1') || '16:9';
                   const activePromptText = customPrompts[idx] !== undefined ? customPrompts[idx] : p.prompt;
                   const imgUrl = renderedImages[idx];
-                  const rendering = isRendering[idx];
+                  const midjourneyParam = currentRatio === '16:9' ? '--ar 16:9 --v 6.1 --style raw' : currentRatio === '3:4' ? '--ar 3:4 --v 6.1 --style raw' : '--ar 1:1 --v 6.1 --style raw';
+                  const midjourneyFullPrompt = `${activePromptText} ${midjourneyParam}`;
 
                   return (
                     <div key={idx} className="p-6 rounded-xl bg-[#111116] border border-[#222228] hover:border-[#33333F] transition-all space-y-4">
@@ -861,7 +825,7 @@ export default function StudioPage() {
                           </span>
                         </div>
 
-                        {/* 비율 선택 및 프롬프트 복사 */}
+                        {/* 비율 선택 및 프롬프트 복사 버튼군 */}
                         <div className="flex items-center gap-2">
                           <div className="flex items-center bg-[#0A0A0C] border border-[#22222A] rounded-lg p-0.5 text-[11px]">
                             {(['16:9', '3:4', '1:1'] as const).map(r => (
@@ -879,16 +843,32 @@ export default function StudioPage() {
                             ))}
                           </div>
 
+                          {/* 미드저니 전용 파라미터 결합 복사 버튼 */}
+                          <button
+                            onClick={() => handleCopy(midjourneyFullPrompt, `mj-${idx}`)}
+                            className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#D4AF37] to-[#B38F24] hover:from-[#E5C048] text-[#0A0A0C] font-bold text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"
+                            title="--ar 및 --v 6.1 파라미터가 자동으로 결합된 미드저니용 프롬프트를 복사합니다"
+                          >
+                            {copiedKey === `mj-${idx}` ? (
+                              <Check className="w-3.5 h-3.5" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                            미드저니(v6.1) 전용 복사
+                          </button>
+
+                          {/* 일반 프롬프트 복사 */}
                           <button
                             onClick={() => handleCopy(activePromptText, `prompt-${idx}`)}
                             className="px-3 py-1.5 rounded-lg bg-[#1C1C24] hover:bg-[#272732] text-xs text-[#E4E4E7] border border-[#2E2E38] flex items-center gap-1.5 cursor-pointer"
+                            title="순수 영문 프롬프트 텍스트만 복사합니다"
                           >
                             {copiedKey === `prompt-${idx}` ? (
                               <Check className="w-3.5 h-3.5 text-emerald-400" />
                             ) : (
                               <Copy className="w-3.5 h-3.5 text-[#D4AF37]" />
                             )}
-                            프롬프트 복사
+                            순수 프롬프트 복사
                           </button>
                         </div>
                       </div>
@@ -897,9 +877,9 @@ export default function StudioPage() {
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between text-[11px] text-[#71717A]">
                           <span className="font-semibold text-[#D4AF37] flex items-center gap-1">
-                            <FileText className="w-3 h-3" /> 프롬프트 (클릭하여 직접 수정 가능)
+                            <FileText className="w-3 h-3" /> 35mm 영화적 영문 프롬프트 (수정 가능)
                           </span>
-                          <span>미드저니 태그 자동 정제 • 8K 디테일 가중치 주입</span>
+                          <span>미드저니 v6.1 / FLUX Pro / DALL-E 3 완벽 호환</span>
                         </div>
                         <textarea
                           value={activePromptText}
@@ -909,30 +889,34 @@ export default function StudioPage() {
                         />
                       </div>
 
-                      {/* 렌더링 액션 바 & 미리보기 */}
-                      <div className="pt-1 flex flex-wrap items-center justify-between gap-3">
-                        <button
-                          onClick={() => handleRenderImage(idx, activePromptText)}
-                          disabled={rendering}
-                          className="px-4 py-2 rounded-lg bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#D4AF37] font-bold text-xs flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
-                        >
-                          {rendering ? (
-                            <>
-                              <span className="w-3.5 h-3.5 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
-                              실시간 고화질 렌더링 중...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
-                              {imgUrl ? '🔄 다른 시드로 다시 생성 (0원)' : '🎨 버튼 1클릭 실시간 이미지 생성 (0원)'}
-                            </>
-                          )}
-                        </button>
+                      {/* 고화질 공식 일러스트 등록 / 업로드 슬롯 */}
+                      <div className="pt-2 border-t border-[#1C1C24] flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2">
+                          <label className="px-3.5 py-1.5 rounded-lg bg-[#181822] hover:bg-[#22222E] border border-[#2E2E3C] text-xs text-[#E4E4E7] font-medium flex items-center gap-1.5 cursor-pointer transition-colors">
+                            <Download className="w-3.5 h-3.5 text-[#D4AF37] rotate-180" />
+                            <span>고화질 완성본 이미지 직접 등록</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const url = URL.createObjectURL(file);
+                                  setRenderedImages(prev => ({ ...prev, [idx]: url }));
+                                }
+                              }}
+                            />
+                          </label>
+                          <span className="text-[11px] text-[#71717A]">
+                            미드저니 등에서 생성한 초고화질 일러스트를 해당 씬의 공식 삽화로 등록합니다.
+                          </span>
+                        </div>
 
                         {imgUrl && (
                           <div className="flex items-center gap-2">
                             <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">
-                              <CheckCircle className="w-3 h-3" /> 렌더링 완료 (비용: 0 KRW)
+                              <CheckCircle className="w-3 h-3" /> 공식 삽화 등록됨
                             </span>
                             <button
                               onClick={() => setModalImage(imgUrl)}
@@ -942,27 +926,21 @@ export default function StudioPage() {
                               확대 보기
                             </button>
                             <button
-                              onClick={() => handleDownloadImage(imgUrl, `crown-grid-scene-${idx + 1}.jpg`)}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-black font-bold text-xs flex items-center gap-1 cursor-pointer"
+                              onClick={() => setRenderedImages(prev => {
+                                const copy = { ...prev };
+                                delete copy[idx];
+                                return copy;
+                              })}
+                              className="px-2.5 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-xs text-rose-300 border border-rose-800/40 cursor-pointer"
                             >
-                              <Download className="w-3 h-3" />
-                              로컬 다운로드
+                              제거
                             </button>
                           </div>
                         )}
                       </div>
 
-                      {/* 이미지 미리보기 캔버스 */}
-                      {rendering && (
-                        <div className="w-full h-64 rounded-lg border border-[#2A2A38] bg-[#0E0E14] flex flex-col items-center justify-center gap-3 animate-pulse">
-                          <span className="w-8 h-8 border-3 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
-                          <p className="text-xs text-[#A1A1AA] font-mono">
-                            Flux 초고속 AI 모델로 35mm 영화적 텍스처 합성 중... (약 2~3초 소요)
-                          </p>
-                        </div>
-                      )}
-
-                      {imgUrl && !rendering && (
+                      {/* 등록된 공식 일러스트 캔버스 */}
+                      {imgUrl && (
                         <div className="relative group rounded-lg overflow-hidden border border-[#2A2A38] bg-[#0A0A0C]">
                           <img
                             src={imgUrl}
@@ -972,13 +950,9 @@ export default function StudioPage() {
                             }`}
                           />
                           <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded bg-black/70 backdrop-blur-md text-[10px] font-mono text-[#E4E4E7] border border-white/10 flex items-center gap-2">
-                            <span>Flux Model</span>
+                            <span className="text-emerald-400 font-bold">공식 고화질 씬 삽화</span>
                             <span className="text-[#D4AF37]">•</span>
                             <span>{currentRatio}</span>
-                            <span className="text-[#D4AF37]">•</span>
-                            <span>{selectedStyle}</span>
-                            <span className="text-[#D4AF37]">•</span>
-                            <span className="text-emerald-400 font-bold">$0 Free</span>
                           </div>
                         </div>
                       )}
