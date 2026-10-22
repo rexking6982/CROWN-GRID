@@ -14,14 +14,19 @@ import {
   Copy, 
   Crop, 
   Sliders, 
-  FileText,
-  ShieldCheck,
-  Check,
-  Search,
-  Cpu,
-  Mic,
-  Zap,
-  Volume2
+  FileText, 
+  ShieldCheck, 
+  Check, 
+  Search, 
+  Cpu, 
+  Mic, 
+  Zap, 
+  Volume2,
+  Image as ImageIcon,
+  Download,
+  ExternalLink,
+  X,
+  Play
 } from 'lucide-react';
 import { AgentProcessResult, AVAILABLE_MODELS } from '@/lib/gemini';
 import { Episode, Series } from '@/lib/types';
@@ -52,6 +57,13 @@ export default function StudioPage() {
     { sender: '배진혁 대표', text: '어서 오게. 8층 관제실의 문은 오직 허가된 자에게만 열리지. 오늘 밤 자네가 보고할 사항은 무엇인가?' }
   ]);
   const [userVoiceInput, setUserVoiceInput] = useState<string>('');
+
+  // 100% 무료 실시간 이미지 렌더러 상태
+  const [renderedImages, setRenderedImages] = useState<Record<number, string>>({});
+  const [isRendering, setIsRendering] = useState<Record<number, boolean>>({});
+  const [isRenderingAll, setIsRenderingAll] = useState<boolean>(false);
+  const [aspectRatios, setAspectRatios] = useState<Record<number, '16:9' | '3:4' | '1:1'>>({});
+  const [modalImage, setModalImage] = useState<string | null>(null);
 
   // 데이터 로드
   useEffect(() => {
@@ -153,6 +165,52 @@ export default function StudioPage() {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  // 실시간 AI 이미지 렌더링 (100% 무료 Flux/SDXL)
+  const handleRenderImage = async (idx: number, prompt: string) => {
+    const ratio = aspectRatios[idx] || '16:9';
+    setIsRendering(prev => ({ ...prev, [idx]: true }));
+    try {
+      const res = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, aspectRatio: ratio }),
+      });
+      const data = await res.json();
+      if (data.success && data.imageUrl) {
+        setRenderedImages(prev => ({ ...prev, [idx]: data.imageUrl }));
+      }
+    } catch (err) {
+      console.error('Image render error:', err);
+    } finally {
+      setIsRendering(prev => ({ ...prev, [idx]: false }));
+    }
+  };
+
+  const handleRenderAll = async (prompts: Array<{ prompt: string }>) => {
+    setIsRenderingAll(true);
+    for (let i = 0; i < prompts.length; i++) {
+      await handleRenderImage(i, prompts[i].prompt);
+    }
+    setIsRenderingAll(false);
+  };
+
+  const handleDownloadImage = async (url: string, filename: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, '_blank');
+    }
   };
 
   const filteredEpisodes = episodes.filter(e => e.series_id === selectedSeriesId);
@@ -437,10 +495,86 @@ export default function StudioPage() {
             </div>
           )}
 
-          {/* 탭 3: 35mm 프롬프트 */}
+          {/* 탭 3: 35mm 프롬프트 & 실시간 AI 이미지 렌더러 */}
           {activeTab === 'prompts' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 gap-4">
+              {/* 상단 렌더러 컨트롤러 바 */}
+              <div className="p-5 rounded-xl bg-gradient-to-r from-[#18151D] via-[#121218] to-[#14121A] border border-[#D4AF37]/30 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5 text-[#D4AF37]" />
+                    <h3 className="text-sm font-bold text-[#F3F3F5] tracking-wide">
+                      35mm 시네마틱 프롬프트 & 실시간 AI 렌더러
+                    </h3>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/30">
+                      100% 무료 무제한 (비용 $0 / Flux AI)
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#A1A1AA] mt-1">
+                    버튼 클릭 한 번으로 극장판 35mm 고화질 비주얼을 실시간 생성·미리보기·로컬 저장합니다.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    const promptList = analysisResult?.prompts || [
+                      {
+                        sceneName: '01. 8층 관제실 - 압도적 위압감의 사열',
+                        timestamp: '00:04:12',
+                        prompt: 'Cinematic 35mm film still, sharp focus, 1980s dark military aesthetic, cold fluorescent tube lighting reflecting on obsidian tile floor, sharp tailored dark uniform, subtle tension, atmospheric dust particles, shallow depth of field, Kodak Vision3 500T --ar 16:9 --style raw',
+                        negativePrompt: 'cartoon, anime, 3d render, oversaturated, blurry, bad anatomy',
+                        aspectRatio: '16:9',
+                      },
+                      {
+                        sceneName: '02. 편광 유리 너머의 차가운 눈빛',
+                        timestamp: '00:12:45',
+                        prompt: 'Dramatic close up shot, 35mm Leica M6, strong rim lighting in dark luxury room, champagne gold and obsidian accents, intense eye contact, cold superiority expression, wet skin texture, high fashion noir --ar 16:9 --v 6.0',
+                        negativePrompt: 'deformed, smiling, casual clothes, low resolution',
+                        aspectRatio: '16:9',
+                      },
+                      {
+                        sceneName: '03. 골드 스트라이프 구속구와 굴복',
+                        timestamp: '00:22:18',
+                        prompt: 'Sensual high-contrast chiaroscuro photography, dark room, polished leather constraints on dark polished mahogany table, sweat glistening under directional spotlight, raw emotional surrender, high aesthetic eroticism, grain, vintage film look --ar 16:9',
+                        negativePrompt: 'bright daylight, outdoor, cheap props, distortion',
+                        aspectRatio: '16:9',
+                      },
+                      {
+                        sceneName: '04. 《로열 넥타》 앰플과 전율',
+                        timestamp: '00:31:05',
+                        prompt: 'Medium shot through heavy antique mirror with golden patina, reflection of breathless exhausted figure kneeling, shadowed dominant figure standing behind, psychological domination, moody mist, muted tones --ar 16:9',
+                        negativePrompt: 'flat lighting, saturated, smile',
+                        aspectRatio: '16:9',
+                      },
+                      {
+                        sceneName: '05. 성황 왕관 엠블럼과 영원한 서약',
+                        timestamp: '00:39:50',
+                        prompt: 'Macro shot, heavy brass keyhole and locked steel soundproof door, engraved golden insignia glowing faintly, cold blue corridor light leaking from the bottom slit, cinematic mystery, Panavision anamorphic lens --ar 16:9',
+                        negativePrompt: 'low quality, messy composition, blurry',
+                        aspectRatio: '16:9',
+                      },
+                    ];
+                    handleRenderAll(promptList);
+                  }}
+                  disabled={isRenderingAll}
+                  className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-[#D4AF37] to-[#B38F26] text-[#0A0A0C] font-bold text-xs flex items-center gap-2 hover:opacity-95 shadow-lg shadow-[#D4AF37]/10 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {isRenderingAll ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-[#0A0A0C] border-t-transparent rounded-full animate-spin" />
+                      전체 5대 씬 일괄 렌더링 중...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      전체 5대 씬 일괄 실시간 렌더링 (0원)
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* 5대 씬 리스트 */}
+              <div className="grid grid-cols-1 gap-6">
                 {(analysisResult?.prompts || [
                   {
                     sceneName: '01. 8층 관제실 - 압도적 위압감의 사열',
@@ -477,23 +611,134 @@ export default function StudioPage() {
                     negativePrompt: 'low quality, messy composition, blurry',
                     aspectRatio: '16:9',
                   },
-                ]).map((p, idx) => (
-                  <div key={idx} className="p-5 rounded-xl bg-[#111116] border border-[#222228] space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#D4AF37]">{p.sceneName}</span>
-                      <button
-                        onClick={() => handleCopy(p.prompt, `prompt-${idx}`)}
-                        className="px-3 py-1 rounded bg-[#1C1C24] hover:bg-[#272732] text-xs text-[#E4E4E7] border border-[#2E2E38] flex items-center gap-1.5"
-                      >
-                        {copiedKey === `prompt-${idx}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-[#D4AF37]" />}
-                        복사
-                      </button>
+                ]).map((p, idx) => {
+                  const currentRatio = aspectRatios[idx] || (p.aspectRatio as '16:9' | '3:4' | '1:1') || '16:9';
+                  const imgUrl = renderedImages[idx];
+                  const rendering = isRendering[idx];
+
+                  return (
+                    <div key={idx} className="p-6 rounded-xl bg-[#111116] border border-[#222228] hover:border-[#33333F] transition-all space-y-4">
+                      {/* 카드 헤더 */}
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-bold text-[#D4AF37]">{p.sceneName}</span>
+                          <span className="text-[10px] font-mono text-[#71717A] bg-[#181820] px-2 py-0.5 rounded border border-[#22222A]">
+                            타임코드: {p.timestamp}
+                          </span>
+                        </div>
+
+                        {/* 비율 선택 및 프롬프트 복사 */}
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center bg-[#0A0A0C] border border-[#22222A] rounded-lg p-0.5 text-[11px]">
+                            {(['16:9', '3:4', '1:1'] as const).map(r => (
+                              <button
+                                key={r}
+                                onClick={() => setAspectRatios(prev => ({ ...prev, [idx]: r }))}
+                                className={`px-2 py-1 rounded cursor-pointer ${
+                                  currentRatio === r
+                                    ? 'bg-[#D4AF37] text-black font-bold'
+                                    : 'text-[#71717A] hover:text-[#E4E4E7]'
+                                } transition-colors`}
+                              >
+                                {r === '16:9' ? '16:9 (와이드)' : r === '3:4' ? '3:4 (표지)' : '1:1 (썸네일)'}
+                              </button>
+                            ))}
+                          </div>
+
+                          <button
+                            onClick={() => handleCopy(p.prompt, `prompt-${idx}`)}
+                            className="px-3 py-1.5 rounded-lg bg-[#1C1C24] hover:bg-[#272732] text-xs text-[#E4E4E7] border border-[#2E2E38] flex items-center gap-1.5 cursor-pointer"
+                          >
+                            {copiedKey === `prompt-${idx}` ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5 text-[#D4AF37]" />
+                            )}
+                            프롬프트 복사
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 프롬프트 본문 */}
+                      <div className="bg-[#0A0A0C] p-3.5 rounded-lg border border-[#1C1C24] font-mono text-xs text-[#D4D4D8] leading-relaxed break-words">
+                        <span className="text-[#D4AF37] font-bold select-none mr-1.5">[PROMPT]</span>
+                        {p.prompt}
+                      </div>
+
+                      {/* 렌더링 액션 바 & 미리보기 */}
+                      <div className="pt-1 flex flex-wrap items-center justify-between gap-3">
+                        <button
+                          onClick={() => handleRenderImage(idx, p.prompt)}
+                          disabled={rendering}
+                          className="px-4 py-2 rounded-lg bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#D4AF37] font-bold text-xs flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                        >
+                          {rendering ? (
+                            <>
+                              <span className="w-3.5 h-3.5 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
+                              실시간 고화질 렌더링 중...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
+                              {imgUrl ? '🔄 다른 시드로 다시 생성 (0원)' : '🎨 버튼 1클릭 실시간 이미지 생성 (0원)'}
+                            </>
+                          )}
+                        </button>
+
+                        {imgUrl && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">
+                              <CheckCircle className="w-3 h-3" /> 렌더링 완료 (비용: 0 KRW)
+                            </span>
+                            <button
+                              onClick={() => setModalImage(imgUrl)}
+                              className="px-3 py-1.5 rounded-lg bg-[#1C1C24] hover:bg-[#272732] text-xs text-[#E4E4E7] border border-[#2E2E38] flex items-center gap-1 cursor-pointer"
+                            >
+                              <ExternalLink className="w-3 h-3 text-[#D4AF37]" />
+                              확대 보기
+                            </button>
+                            <button
+                              onClick={() => handleDownloadImage(imgUrl, `crown-grid-scene-${idx + 1}.jpg`)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-black font-bold text-xs flex items-center gap-1 cursor-pointer"
+                            >
+                              <Download className="w-3 h-3" />
+                              로컬 다운로드
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 이미지 미리보기 캔버스 */}
+                      {rendering && (
+                        <div className="w-full h-64 rounded-lg border border-[#2A2A38] bg-[#0E0E14] flex flex-col items-center justify-center gap-3 animate-pulse">
+                          <span className="w-8 h-8 border-3 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
+                          <p className="text-xs text-[#A1A1AA] font-mono">
+                            Flux Schnell 초고속 AI 모델로 35mm 영화적 텍스처 합성 중... (약 2~3초 소요)
+                          </p>
+                        </div>
+                      )}
+
+                      {imgUrl && !rendering && (
+                        <div className="relative group rounded-lg overflow-hidden border border-[#2A2A38] bg-[#0A0A0C]">
+                          <img
+                            src={imgUrl}
+                            alt={p.sceneName}
+                            className={`w-full object-cover transition-transform duration-300 group-hover:scale-[1.01] ${
+                              currentRatio === '16:9' ? 'aspect-video' : currentRatio === '3:4' ? 'aspect-[3/4] max-h-[500px] mx-auto object-contain' : 'aspect-square max-h-[450px] mx-auto'
+                            }`}
+                          />
+                          <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded bg-black/70 backdrop-blur-md text-[10px] font-mono text-[#E4E4E7] border border-white/10 flex items-center gap-2">
+                            <span>Flux Model</span>
+                            <span className="text-[#D4AF37]">•</span>
+                            <span>{currentRatio}</span>
+                            <span className="text-[#D4AF37]">•</span>
+                            <span className="text-emerald-400 font-bold">$0 Free</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="bg-[#0A0A0C] p-3 rounded-lg border border-[#1C1C24] font-mono text-xs text-[#E4E4E7]">
-                      {p.prompt}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -714,6 +959,43 @@ export default function StudioPage() {
                   <Volume2 className="w-3.5 h-3.5" />
                   전송
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* 전체화면 이미지 확대 모달 */}
+          {modalImage && (
+            <div 
+              onClick={() => setModalImage(null)}
+              className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-zoom-out"
+            >
+              <div className="relative max-w-5xl max-h-[90vh] flex flex-col items-center" onClick={e => e.stopPropagation()}>
+                <button
+                  onClick={() => setModalImage(null)}
+                  className="absolute -top-10 right-0 p-2 text-white hover:text-[#D4AF37] transition-colors cursor-pointer"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+                <img
+                  src={modalImage}
+                  alt="Enlarged Render"
+                  className="max-w-full max-h-[80vh] rounded-lg shadow-2xl border border-white/10 object-contain"
+                />
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    onClick={() => handleDownloadImage(modalImage, 'crown-grid-enlarged.jpg')}
+                    className="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center gap-2 shadow-lg cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    고해상도 다운로드 (JPG)
+                  </button>
+                  <button
+                    onClick={() => setModalImage(null)}
+                    className="px-4 py-2 rounded-lg bg-[#1C1C24] hover:bg-[#272732] text-xs text-[#E4E4E7] border border-[#2E2E38] cursor-pointer"
+                  >
+                    닫기 (ESC)
+                  </button>
+                </div>
               </div>
             </div>
           )}

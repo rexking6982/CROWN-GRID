@@ -3,8 +3,24 @@ import path from 'path';
 import { getSupabase } from './supabaseClient';
 import { Universe, Series, Character, Episode, CharacterRelationship } from './types';
 
-// 로컬 assets 폴더 경로 (웹앱 상위 디렉토리의 assets)
-const ASSETS_ROOT = path.resolve(process.cwd(), '..', 'assets');
+// 로컬 assets 폴더 후보 경로 자동 탐색 (환경에 구애받지 않는 절대/상대 경로 폴백)
+function getAssetsRoot(): string {
+  const candidates = [
+    path.resolve(process.cwd(), '..', 'assets'),
+    'C:\\NMaker\\assets',
+    path.resolve(process.cwd(), 'assets'),
+    path.resolve(__dirname, '..', '..', '..', 'assets'),
+  ];
+  for (const c of candidates) {
+    try {
+      if (fs.existsSync(c)) {
+        return c;
+      }
+    } catch {}
+  }
+  return candidates[0];
+}
+
 const LOCAL_DATA_DIR = path.resolve(process.cwd(), 'data');
 const LOCAL_DATA_FILE = path.join(LOCAL_DATA_DIR, 'universe_data.json');
 
@@ -31,11 +47,12 @@ export interface SyncResult {
  * DB(또는 로컬 스토리지 캐시)에 Upsert합니다.
  */
 export async function syncAssetsFromLocal(): Promise<SyncResult> {
+  const assetsRoot = getAssetsRoot();
   const logs: string[] = [];
-  logs.push(`[SYNC] 로컬 Assets 스캔 시작: ${ASSETS_ROOT}`);
+  logs.push(`[SYNC] 로컬 Assets 스캔 시작: ${assetsRoot}`);
 
-  if (!fs.existsSync(ASSETS_ROOT)) {
-    logs.push(`[ERROR] Assets 폴더를 찾을 수 없습니다: ${ASSETS_ROOT}`);
+  if (!fs.existsSync(assetsRoot)) {
+    logs.push(`[ERROR] Assets 폴더를 찾을 수 없습니다: ${assetsRoot}`);
     return {
       success: false,
       timestamp: new Date().toISOString(),
@@ -754,7 +771,7 @@ export async function syncAssetsFromLocal(): Promise<SyncResult> {
   const episodesList: Episode[] = [];
 
   for (const def of seriesDefinitions) {
-    const seriesDir = path.join(ASSETS_ROOT, def.folderName);
+    const seriesDir = path.join(assetsRoot, def.folderName);
     if (!fs.existsSync(seriesDir)) {
       logs.push(`[WARN] 시리즈 폴더 없음: ${def.folderName}`);
       continue;
