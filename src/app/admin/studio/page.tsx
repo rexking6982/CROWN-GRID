@@ -814,6 +814,56 @@ export default function StudioPage() {
                   const midjourneyParam = currentRatio === '16:9' ? '--ar 16:9 --v 6.1 --style raw' : currentRatio === '3:4' ? '--ar 3:4 --v 6.1 --style raw' : '--ar 1:1 --v 6.1 --style raw';
                   const midjourneyFullPrompt = `${activePromptText} ${midjourneyParam}`;
 
+                  // 구글 플로우 @캐릭터 태그 자동 매핑
+                  const detectedFlowTags: string[] = [];
+                  const charTagMap: Record<string, string> = {
+                    'Song Kang-woo': '@SongKangwoo',
+                    'Kang-woo': '@SongKangwoo',
+                    '송강우': '@SongKangwoo',
+                    'Bae Jin-hyuk': '@BaeJinhyuk',
+                    'Jin-hyuk': '@BaeJinhyuk',
+                    '배진혁': '@BaeJinhyuk',
+                    'Kwon Jae-ha': '@KwonJaeha',
+                    'Jae-ha': '@KwonJaeha',
+                    '권재하': '@KwonJaeha',
+                    'Cha Seon-woo': '@ChaSeonwoo',
+                    'Seon-woo': '@ChaSeonwoo',
+                    '차선우': '@ChaSeonwoo',
+                    'Seo Ha-jin': '@SeoHajin',
+                    'Ha-jin': '@SeoHajin',
+                    '서하진': '@SeoHajin',
+                    'Shin Woogyeom': '@ShinWoogyeom',
+                    'Woogyeom': '@ShinWoogyeom',
+                    '신우겸': '@ShinWoogyeom',
+                    'Kwon Dojin': '@KwonDojin',
+                    'Dojin': '@KwonDojin',
+                    '권도진': '@KwonDojin',
+                    'Kang Hae-deun': '@KangHaedeun',
+                    'Hae-deun': '@KangHaedeun',
+                    '강해든': '@KangHaedeun',
+                    'Jin Tae-heon': '@JinTaeheon',
+                    'Dr. Jin': '@JinTaeheon',
+                    '진태헌': '@JinTaeheon',
+                    '닥터 진': '@JinTaeheon',
+                    'Baek Doha': '@BaekDoha',
+                    '백도하': '@BaekDoha',
+                    'Kang Tae-o': '@KangTaeo',
+                    '강태오': '@KangTaeo',
+                    'Yoo Si-heon': '@YooSiheon',
+                    '유시헌': '@YooSiheon',
+                    'Choi Min-woo': '@ChoiMinwoo',
+                    '최민우': '@ChoiMinwoo',
+                    'Han Kyul': '@HanKyul',
+                    '한결': '@HanKyul',
+                  };
+                  for (const [kw, tag] of Object.entries(charTagMap)) {
+                    if ((activePromptText.includes(kw) || p.sceneName.includes(kw)) && !detectedFlowTags.includes(tag)) {
+                      detectedFlowTags.push(tag);
+                    }
+                  }
+                  const flowPrefix = detectedFlowTags.length > 0 ? `${detectedFlowTags.join(' ')} ` : '';
+                  const googleFlowPrompt = `${flowPrefix}${activePromptText}, 35mm cinematic film still, 8k resolution, Google Flow character consistency active.`;
+
                   return (
                     <div key={idx} className="p-6 rounded-xl bg-[#111116] border border-[#222228] hover:border-[#33333F] transition-all space-y-4">
                       {/* 카드 헤더 */}
@@ -855,6 +905,20 @@ export default function StudioPage() {
                               <Copy className="w-3.5 h-3.5" />
                             )}
                             미드저니(v6.1) 전용 복사
+                          </button>
+
+                          {/* 구글 플로우 @태그 결합 복사 버튼 */}
+                          <button
+                            onClick={() => handleCopy(googleFlowPrompt, `flow-${idx}`)}
+                            className="px-3 py-1.5 rounded-lg bg-sky-950/40 hover:bg-sky-900/60 border border-sky-500/40 text-sky-200 font-bold text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"
+                            title="구글 플로우(Characters Library) @태그가 자동으로 결합된 일관성 고정 프롬프트를 복사합니다"
+                          >
+                            {copiedKey === `flow-${idx}` ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5 text-sky-400" />
+                            )}
+                            구글 플로우(@태그) 복사
                           </button>
 
                           {/* 일반 프롬프트 복사 */}

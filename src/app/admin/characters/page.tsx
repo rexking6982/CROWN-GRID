@@ -6,7 +6,7 @@ import AdminHeader from '@/components/admin/AdminHeader';
 import { 
   Users, Search, Filter, AlertTriangle, ShieldAlert, Sparkles, 
   CheckCircle2, RefreshCw, ChevronDown, ChevronUp, Ruler, Flame, 
-  Eye, BookOpen, X, Check, Activity, Info, AlertCircle
+  Eye, BookOpen, X, Check, Activity, Info, AlertCircle, Copy
 } from 'lucide-react';
 import { Character } from '@/lib/types';
 import { CensusCharacter, ConflictItem, UniverseCensusResult } from '@/lib/character-census';
@@ -25,6 +25,13 @@ export default function CharactersPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeConflictModal, setActiveConflictModal] = useState<ConflictItem | null>(null);
   const [expandedEpisodeCharId, setExpandedEpisodeCharId] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   // 전수조사 및 기존 데이터 로드
   const loadData = async () => {
@@ -383,7 +390,7 @@ export default function CharactersPage() {
                     {/* 상단: 이름, 역할, 티어 배지 */}
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <h4 className="text-xl font-bold text-[#F3F3F5] tracking-tight">
                             {char.name}
                           </h4>
@@ -408,6 +415,13 @@ export default function CharactersPage() {
                               카메오
                             </span>
                           )}
+
+                          {/* 구글 플로우 캐릭터 태그 뱃지 */}
+                          {char.flowTag && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                              {char.flowTag}
+                            </span>
+                          )}
                         </div>
 
                         <div className="text-xs text-[#D4AF37] font-medium mt-1">
@@ -419,12 +433,28 @@ export default function CharactersPage() {
                       </div>
 
                       <div className="flex flex-col items-end gap-1.5">
-                        <button
-                          onClick={() => handleOpenEdit(char)}
-                          className="px-2.5 py-1 rounded-lg bg-[#1C1C24] hover:bg-[#272732] text-[11px] text-[#E4E4E7] border border-[#2E2E38] transition-colors"
-                        >
-                          규격 수정
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          {char.flowAnchorPrompt && (
+                            <button
+                              onClick={() => handleCopy(char.flowAnchorPrompt, 'flow-' + char.id)}
+                              className="px-2.5 py-1 rounded-lg bg-sky-950/40 hover:bg-sky-900/60 border border-sky-500/30 text-sky-200 text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                              title="구글 플로우(Characters Library)에 첫 등록할 8K 기준 초상화 프롬프트를 복사합니다"
+                            >
+                              {copiedKey === 'flow-' + char.id ? (
+                                <Check className="w-3 h-3 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-3 h-3 text-sky-400" />
+                              )}
+                              <span>Flow 앵커 복사</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleOpenEdit(char)}
+                            className="px-2.5 py-1 rounded-lg bg-[#1C1C24] hover:bg-[#272732] text-[11px] text-[#E4E4E7] border border-[#2E2E38] transition-colors"
+                          >
+                            규격 수정
+                          </button>
+                        </div>
                       </div>
                     </div>
 

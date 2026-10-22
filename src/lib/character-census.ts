@@ -18,6 +18,8 @@ export interface ConflictItem {
 export interface CensusCharacter {
   id: string;
   name: string;
+  flowTag: string;
+  flowAnchorPrompt: string;
   aliases: string[];
   role: string;
   seriesId: string;
@@ -56,7 +58,46 @@ export interface UniverseCensusResult {
   allConflicts: ConflictItem[];
 }
 
-// 35인 표준 인물 프로필 및 정밀 메타데이터
+// Google Flow 캐릭터 일관성 태그 및 앵커 프롬프트 매핑 테이블
+const FLOW_ROMAN_MAP: Record<string, string> = {
+  '송강우': 'SongKangwoo',
+  '배진혁': 'BaeJinhyuk',
+  '권재하': 'KwonJaeha',
+  '차선우': 'ChaSeonwoo',
+  '한시원': 'HanSiwon',
+  '서하진': 'SeoHajin',
+  '강해든': 'KangHaedeun',
+  '진태헌': 'JinTaeheon',
+  '박진태': 'ParkJintae',
+  '최민우': 'ChoiMinwoo',
+  '신우겸': 'ShinWoogyeom',
+  '백도하': 'BaekDoha',
+  '신태경': 'ShinTaekyung',
+  '권도진': 'KwonDojin',
+  '민지훈': 'MinJihoon',
+  '오승택': 'OhSeungtaek',
+  '강이현': 'KangIhyun',
+  '서유건': 'SeoYoogun',
+  '유시헌': 'YooSiheon',
+  '강태오': 'KangTaeo',
+  '윤태서': 'YoonTaeseo',
+  '차진우': 'ChaJinwoo',
+  '정우진': 'JungWoojin',
+  '송민재': 'SongMinjae',
+  '한결': 'HanKyul',
+};
+
+export function getCharacterFlowTag(name: string): string {
+  const roman = FLOW_ROMAN_MAP[name] || name.replace(/\s+/g, '');
+  return `@${roman}`;
+}
+
+export function generateFlowAnchorPrompt(char: { name: string; age: number; height: number; appearance: string; role: string }): string {
+  const tag = getCharacterFlowTag(char.name);
+  return `8k studio portrait, cinematic 35mm photography, character anchor identity sheet of ${tag} (${char.age}yo Korean male, ${char.height}cm, ${char.role}), ${char.appearance}, sharp symmetrical facial features, neutral direct gaze, soft studio key light, seamless solid neutral gray background, hyperrealistic skin pores, perfect Google Flow Character Library reference.`;
+}
+
+// 25인 표준 인물 프로필 및 정밀 메타데이터
 const MASTER_CHARACTER_REGISTRY = [
   {
     name: '송강우',
@@ -587,6 +628,8 @@ export function runUniverseCharacterCensus(): UniverseCensusResult {
     characterResults.push({
       id: `char-${master.name}`,
       name: master.name,
+      flowTag: getCharacterFlowTag(master.name),
+      flowAnchorPrompt: generateFlowAnchorPrompt(master),
       aliases: master.aliases || [],
       role: master.role,
       seriesId: master.seriesId,
